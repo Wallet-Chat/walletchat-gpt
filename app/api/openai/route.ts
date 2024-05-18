@@ -48,6 +48,7 @@ const functions = [
     }
 ];
 
+let threadId;  // Store the thread ID
 const conversations = {};  // In-memory store for conversations
 
 // Create assistant once, outside the handler to avoid creating a new instance each time
@@ -97,10 +98,8 @@ const checkStatusAndReturnMessages = async (threadId, runId) => {
 
 export const POST = async (req, res) => {
     await initializeAssistant();
-    const { message, threadId: providedThreadId } = await req.json();
+    const { message } = await req.json();
     try {
-        let threadId = providedThreadId;
-
         // Check if a new thread needs to be created
         if (!threadId) {
             // Create a new thread
@@ -115,12 +114,6 @@ export const POST = async (req, res) => {
         // Add new user message to history
         const history = conversations[threadId];
         history.push({ role: 'user', content: message });
-
-        // Create a new message in the thread
-        const userMessage = await openai.beta.threads.messages.create(threadId, {
-            role: "user",
-            content: message,
-        });
 
         // Detect if the assistant wants to call a function
         const completion = await openai.chat.completions.create({
@@ -151,10 +144,16 @@ export const POST = async (req, res) => {
             });
         }
 
+        // If no function call, proceed to create a new message in the thread
+        const userMessage = await openai.beta.threads.messages.create(threadId, {
+            role: "user",
+            content: message,
+        });
+
         // Run the assistant with the conversation history if no function is called
         const run = await openai.beta.threads.runs.create(threadId, {
             assistant_id: assistant.id,
-            instructions: "Please address the user as Mervin Praison.",
+            instructions: "Please address the user as Sir Bruv Degen.",
         });
 
         console.log(run);
