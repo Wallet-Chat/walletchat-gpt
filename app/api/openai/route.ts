@@ -1,17 +1,16 @@
 import OpenAI from "openai";
 import axios from "axios";
 import { NextRequest, NextResponse } from 'next/server';
-import { ChatCompletionTool } from "openai/resources/index.mjs";
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const functions: ChatCompletionTool[] = [
+const functions = [
     {
         type: "function",
         function: {
-            name: "resolve_ens_name",
+            name: "resolveEnsNameToAddress",
             description: "Resolve the given ENS name to an Ethereum address",
             parameters: {
                 type: "object",
@@ -19,7 +18,6 @@ const functions: ChatCompletionTool[] = [
                     ensName: {
                         type: "string",
                         description: "The ENS name to resolve",
-                        enum: ["crypto-kevin.eth"]
                     }
                 },
                 required: ["ensName"]
@@ -29,7 +27,7 @@ const functions: ChatCompletionTool[] = [
     {
         type: "function",
         function: {
-            name: "get_wallet_info",
+            name: "getWalletInfo",
             description: "Retrieve the ETH balance, transaction lists, and token transfers of a given wallet address using the Etherscan API",
             parameters: {
                 type: "object",
@@ -40,7 +38,7 @@ const functions: ChatCompletionTool[] = [
                     },
                     action: {
                         type: "string",
-                        description: "The action to perform (balance, txlist, tokentx, etc.)",
+                        description: "The action to perform (balance, txlist, tokentx)",
                         enum: ["balance", "txlist", "tokentx"]
                     }
                 },
@@ -50,68 +48,125 @@ const functions: ChatCompletionTool[] = [
     }
 ];
 
-export const POST = async (req: NextRequest, res: NextResponse) => {
-    const { message } = await req.json()
+const conversations = {};  // In-memory store for conversations
+
+// Create assistant once, outside the handler to avoid creating a new instance each time
+let assistant;
+
+const initializeAssistant = async () => {
+    if (!assistant) {
+        assistant = await openai.beta.assistants.create({
+            name: "Crypto Assistant",
+            instructions: "You are a cryptocurrency analyst, use the provided functions to answer questions as needed.",
+            tools: functions,
+            model: "gpt-4o",
+        });
+    }
+};
+
+const executeFunction = async (functionName, args) => {
+    switch (functionName) {
+        case "resolveEnsNameToAddress":
+            return await resolveEnsNameToAddress(args);
+        case "getWalletInfo":
+            return await getWalletInfo(args);
+        default:
+            throw new Error(`Unknown function: ${functionName}`);
+    }
+};
+
+const checkStatusAndReturnMessages = async (threadId, runId) => {
+    return new Promise(async (resolve) => {
+        const interval = setInterval(async () => {
+            console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
+            let runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+            if (runStatus.status === "completed") {
+                clearInterval(interval);
+                let messages = await openai.beta.threads.messages.list(threadId);
+                const conversationHistory = [];
+                messages.data.forEach((msg) => {
+                    const role = msg.role;
+                    const content = msg.content[0].text.value;
+                    conversationHistory.push({ role: role, content: content });
+                });
+                resolve(conversationHistory);
+            }
+        }, 2000); // Poll every 2 seconds
+    });
+};
+
+export const POST = async (req, res) => {
+    await initializeAssistant();
+    const { message, threadId: providedThreadId } = await req.json();
     try {
+        let threadId = providedThreadId;
+
+        // Check if a new thread needs to be created
+        if (!threadId) {
+            // Create a new thread
+            const thread = await openai.beta.threads.create();
+            threadId = thread.id;
+            conversations[threadId] = []; // Initialize the conversation history for the new thread
+        } else if (!conversations[threadId]) {
+            // Initialize the conversation history if it doesn't exist
+            conversations[threadId] = [];
+        }
+
+        // Add new user message to history
+        const history = conversations[threadId];
+        history.push({ role: 'user', content: message });
+
+        // Create a new message in the thread
+        const userMessage = await openai.beta.threads.messages.create(threadId, {
+            role: "user",
+            content: message,
+        });
+
+        // Detect if the assistant wants to call a function
         const completion = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
-                { 
-                    role: "system",
-                    content: "Perform function requests for the user" 
-                },{
-                    role: "user",
-                    content: message
-                }
+                { role: "system", content: "You are a cryptocurrency analyst. Use the provided functions to answer questions as needed." },
+                { role: "user", content: message }
             ],
-            tools: functions,
-            tool_choice: "auto",
+            functions: functions.map(f => f.function),
         });
 
-        const responseMessage = completion.choices[0].message;
+        const functionCall = completion.choices[0].message.function_call;
+        if (functionCall) {
+            const functionName = functionCall.name;
+            const args = JSON.parse(functionCall.arguments);
+            const functionResult = await executeFunction(functionName, args);
 
-        // Step 2: check if the model wanted to call a function
-        if (responseMessage.tool_calls) {
-            const toolCalls = responseMessage.tool_calls;
-            // Step 3: call the function
-            // Note: the JSON response may not always be valid; be sure to handle errors
-            const availableFunctions: any = {
-                resolve_ens_name: resolveEnsNameToAddress,
-                get_wallet_info: getWalletInfo,
-            }; // only one function in this example, but you can have multiple
+            // Add the function result to the conversation history
+            history.push({ role: 'assistant', content: functionResult });
+            conversations[threadId] = history;
 
-            // messages.push(responseMessage); // extend conversation with assistant's reply
-            
-            for (const toolCall of toolCalls) {
-                const functionName = toolCall.function.name;
-                const functionToCall = availableFunctions[functionName];
-                const functionArgs = JSON.parse(toolCall.function.arguments);
-                const functionResponse = await functionToCall(functionArgs);
-                // messages.push({
-                //     tool_call_id: toolCall.id,
-                //     role: "tool",
-                //     name: functionName,
-                //     content: functionResponse,
-                // }); // extend conversation with function response
-
-                console.log(functionArgs)
-                console.log(functionResponse)
-
-                return new NextResponse(JSON.stringify(functionResponse), {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-            }
+            // Respond with the function result
+            return new NextResponse(JSON.stringify({ threadId, conversation: history }), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
         }
-        
-        // const thread = openai.beta.threads.create();
-        // const response = openai.beta.threads.messages.create(thread.id, {
-        //     role: "user",
-        //     content: message,
-        // });
-        return new NextResponse(JSON.stringify(responseMessage.content), {
+
+        // Run the assistant with the conversation history if no function is called
+        const run = await openai.beta.threads.runs.create(threadId, {
+            assistant_id: assistant.id,
+            instructions: "Please address the user as Mervin Praison.",
+        });
+
+        console.log(run);
+
+        // Wait for the run to complete and return the result
+        const conversationHistory = await checkStatusAndReturnMessages(threadId, run.id);
+
+        // Save updated conversation history
+        conversations[threadId] = conversationHistory;
+
+        // Respond with the updated conversation
+        return new NextResponse(JSON.stringify({ threadId, conversation: conversationHistory }), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -126,11 +181,11 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
             },
         });
     }
-}
-
+};
 
 // ENS name resolving function
-async function resolveEnsNameToAddress({ ensName }: { ensName: string }) {
+async function resolveEnsNameToAddress({ ensName }) {
+    console.log(`resolveEnsNameToAddress called with ensName: ${ensName}`);
     const baseUrl = 'https://api.v2.walletchat.fun';
     const response = await axios.get(`${baseUrl}/resolve_name/${ensName}`);
     if (response.status === 200) {
@@ -141,7 +196,8 @@ async function resolveEnsNameToAddress({ ensName }: { ensName: string }) {
 }
 
 // Get Wallet Info using Etherscan
-async function getWalletInfo({address, action}: { address: string, action: string }) {
+async function getWalletInfo({ address, action }) {
+    console.log(`getWalletInfo called with address: ${address}, action: ${action}`);
     const baseUrl = 'https://api.etherscan.io/api';
     const apiKey = process.env.ETHERSCAN_API_KEY;
     const response = await axios.get(baseUrl, {
