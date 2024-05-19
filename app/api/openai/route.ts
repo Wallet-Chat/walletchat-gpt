@@ -98,6 +98,8 @@ const checkStatusAndReturnMessages = async (threadId, runId) => {
 
 const handleFunctionCalls = async (threadId, messages) => {
     let isFunctionCall = true;
+    let functionCallProcessed = false;
+    let previousFunctionCall = null;
 
     while (isFunctionCall) {
         console.log(`Handling function calls with messages: ${JSON.stringify(messages)}`);
@@ -112,7 +114,9 @@ const handleFunctionCalls = async (threadId, messages) => {
 
         const functionCall = completion.choices[0].message.function_call;
 
-        if (functionCall) {
+        if (functionCall && functionCall !== previousFunctionCall) {
+            previousFunctionCall = functionCall;
+            functionCallProcessed = true;
             const functionName = functionCall.name;
             const args = JSON.parse(functionCall.arguments);
             console.log(`Calling function: ${functionName} with args: ${JSON.stringify(args)}`);
@@ -132,7 +136,7 @@ const handleFunctionCalls = async (threadId, messages) => {
         }
     }
 
-    return messages;
+    return { messages, functionCallProcessed };
 };
 
 export const POST = async (req, res) => {
@@ -161,10 +165,10 @@ export const POST = async (req, res) => {
             { role: "system", content: "You are a cryptocurrency analyst. Use the provided functions to answer questions as needed. Address the user as Sir Crypto Bruv." },
             { role: "user", content: message }
         ];
-        const updatedMessages = await handleFunctionCalls(threadId, initialMessages);
-        
+        const { messages: updatedMessages, functionCallProcessed } = await handleFunctionCalls(threadId, initialMessages);
+
         // If there were function calls and they were processed, return the updated history
-        if (updatedMessages.length > initialMessages.length) {
+        if (functionCallProcessed) {
             console.log(`Function calls processed. Returning updated history.`);
             return new NextResponse(JSON.stringify({ threadId, conversation: conversations[threadId] }), {
                 status: 200,
@@ -228,8 +232,6 @@ async function resolveEnsNameToAddress({ ensName }) {
     }
 }
 
-// Get Wallet Info using Etherscan
-// Get Wallet Info using Etherscan
 async function getWalletInfo({ address, action }) {
     console.log(`getWalletInfo called with address: ${address}, action: ${action}`);
     const baseUrl = 'https://api.etherscan.io/api';
@@ -261,4 +263,3 @@ async function getWalletInfo({ address, action }) {
         throw new Error(`Failed to retrieve wallet info. Status code: ${response.status}`);
     }
 }
-
