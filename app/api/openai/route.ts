@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
+const DUNE_API_KEY = process.env.DUNE_API_KEY;
 
 const functions = [
     {
@@ -45,13 +46,80 @@ const functions = [
                 required: ["address", "action"]
             }
         }
+    },
+    {
+        type: "function",
+        function: {
+            name: "executeSolanaTokenOverlap",
+            description: "Check what other tokens are held by the provided Solana token contract address.",
+            parameters: {
+                type: "object",
+                properties: {
+                    token_address: {
+                        type: "string",
+                        description: "Solana token address to use in the query."
+                    }
+                },
+                required: ["token_address"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "executeSolanaTokenWalletProfitLoss",
+            description: "Retrieve Profit or Loss for a given Solana Wallet Address in USD and sorted by time.",
+            parameters: {
+                type: "object",
+                properties: {
+                    wallet_address: {
+                        type: "string",
+                        description: "Solana wallet address to use in the query."
+                    }
+                },
+                required: ["wallet_address"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "executeSolanaTokenOwnerInfo",
+            description: "Return the owner, symbol, and token total supply for a given Solana token.",
+            parameters: {
+                type: "object",
+                properties: {
+                    token_address: {
+                        type: "string",
+                        description: "Solana token address to use in the query."
+                    }
+                },
+                required: ["token_address"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "executeEthereumTokenOverlap",
+            description: "Check what other tokens are held by the provided Ethereum token contract address.",
+            parameters: {
+                type: "object",
+                properties: {
+                    token_address: {
+                        type: "string",
+                        description: "Ethereum token address to use in the query."
+                    }
+                },
+                required: ["token_address"]
+            }
+        }
     }
 ];
 
 let threadId;  // Store the thread ID
 const conversations = {};  // In-memory store for conversations
 
-// Create assistant once, outside the handler to avoid creating a new instance each time
 let assistant;
 
 const initializeAssistant = async () => {
@@ -71,51 +139,94 @@ const executeFunction = async (functionName, args) => {
             return await resolveEnsNameToAddress(args);
         case "getWalletInfo":
             return await getWalletInfo(args);
+        case "executeSolanaTokenOverlap":
+        case "executeSolanaTokenWalletProfitLoss":
+        case "executeSolanaTokenOwnerInfo":
+        case "executeEthereumTokenOverlap":
+            const executionId = await executeDuneQuery(functionName, args);
+            return await pollQueryStatus(executionId);  // Polling for the status and then fetching results
         default:
             throw new Error(`Unknown function: ${functionName}`);
     }
 };
 
-const checkStatusAndReturnMessages = async (threadId, runId) => {
-    return new Promise(async (resolve) => {
-        const interval = setInterval(async () => {
-            console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
-            let runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
-            if (runStatus.status === "completed") {
-                clearInterval(interval);
-                let messages = await openai.beta.threads.messages.list(threadId);
-                const conversationHistory = [];
-                messages.data.forEach((msg) => {
-                    const role = msg.role;
-                    const content = msg.content[0].text.value;
-                    conversationHistory.push({ role: role, content: content });
-                });
-                resolve(conversationHistory);
-            }
-        }, 2000); // Poll every 2 seconds
+const executeDuneQuery = async (functionName, args) => {
+    const queryIds = {
+        executeSolanaTokenOverlap: 3623869,
+        executeSolanaTokenWalletProfitLoss: 3657856,
+        executeSolanaTokenOwnerInfo: 3408648,
+        executeEthereumTokenOverlap: 3615247
+    };
+    const queryId = queryIds[functionName];
+    const endpoint = `https://api.dune.com/api/v1/query/${queryId}/execute`;
+    const payload = {
+        query_parameters: args,
+        performance: "medium"
+    };
+    const response = await axios.post(endpoint, payload, {
+        headers: {
+            'x-dune-api-key': DUNE_API_KEY
+        }
     });
+    if (response.status === 200) {
+        return response.data.execution_id;
+    } else {
+        throw new Error(`Failed to execute query. Status code: ${response.status}`);
+    }
+};
+
+const pollQueryStatus = async (executionId) => {
+    const endpoint = `https://api.dune.com/api/v1/execution/${executionId}/status`;
+    try {
+        while (true) {
+            const response = await axios.get(endpoint, {
+                headers: {
+                    'x-dune-api-key': DUNE_API_KEY
+                }
+            });
+            const data = response.data;
+            if (data.state === "QUERY_STATE_COMPLETED") {
+                return await getQueryResults(executionId);
+            } else if (["QUERY_STATE_FAILED", "QUERY_STATE_CANCELLED", "QUERY_STATE_EXPIRED"].includes(data.state)) {
+                throw new Error(`Query failed with state: ${data.state}`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Poll every 2 seconds
+        }
+    } catch (error) {
+        console.error(`Error while polling query status: ${error}`);
+        throw error;
+    }
+};
+
+const getQueryResults = async (executionId) => {
+    const endpoint = `https://api.dune.com/api/v1/execution/${executionId}/results`;
+    const response = await axios.get(endpoint, {
+        headers: {
+            'x-dune-api-key': DUNE_API_KEY
+        }
+    });
+    if (response.status === 200) {
+        return response.data;
+    } else {
+        throw new Error(`Failed to fetch results: ${response.status}`);
+    }
 };
 
 export const POST = async (req, res) => {
     await initializeAssistant();
     const { message } = await req.json();
     try {
-        // Check if a new thread needs to be created
         if (!threadId) {
-            // Create a new thread
             const thread = await openai.beta.threads.create();
             threadId = thread.id;
-            conversations[threadId] = []; // Initialize the conversation history for the new thread
+            conversations[threadId] = [];
         } else if (!conversations[threadId]) {
-            // Initialize the conversation history if it doesn't exist
             conversations[threadId] = [];
         }
 
-        // Add new user message to history
         const history = conversations[threadId];
         history.push({ role: 'user', content: message });
 
-        // Detect if the assistant wants to call a function
         const completion = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
@@ -131,11 +242,9 @@ export const POST = async (req, res) => {
             const args = JSON.parse(functionCall.arguments);
             const functionResult = await executeFunction(functionName, args);
 
-            // Add the function result to the conversation history
             history.push({ role: 'assistant', content: functionResult });
             conversations[threadId] = history;
 
-            // Respond with the function result
             return new NextResponse(JSON.stringify({ threadId, conversation: history }), {
                 status: 200,
                 headers: {
@@ -144,27 +253,19 @@ export const POST = async (req, res) => {
             });
         }
 
-        // If no function call, proceed to create a new message in the thread
         const userMessage = await openai.beta.threads.messages.create(threadId, {
             role: "user",
             content: message,
         });
 
-        // Run the assistant with the conversation history if no function is called
         const run = await openai.beta.threads.runs.create(threadId, {
             assistant_id: assistant.id,
             instructions: "Please address the user as Sir Bruv Degen.",
         });
 
-        console.log(run);
-
-        // Wait for the run to complete and return the result
         const conversationHistory = await checkStatusAndReturnMessages(threadId, run.id);
-
-        // Save updated conversation history
         conversations[threadId] = conversationHistory;
 
-        // Respond with the updated conversation
         return new NextResponse(JSON.stringify({ threadId, conversation: conversationHistory }), {
             status: 200,
             headers: {
@@ -198,13 +299,12 @@ async function resolveEnsNameToAddress({ ensName }) {
 async function getWalletInfo({ address, action }) {
     console.log(`getWalletInfo called with address: ${address}, action: ${action}`);
     const baseUrl = 'https://api.etherscan.io/api';
-    const apiKey = process.env.ETHERSCAN_API_KEY;
     const response = await axios.get(baseUrl, {
         params: {
             module: 'account',
             action: action,
             address: address,
-            apikey: apiKey
+            apikey: ETHERSCAN_API_KEY
         }
     });
     if (response.status === 200) {
