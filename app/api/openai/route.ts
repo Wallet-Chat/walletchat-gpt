@@ -126,7 +126,15 @@ const initializeAssistant = async () => {
     if (!assistant) {
         assistant = await openai.beta.assistants.create({
             name: "Crypto Assistant",
-            instructions: "You are a cryptocurrency analyst, use the provided functions to answer questions as needed.",
+            instructions: "You are a cryptocurrency analyst, use the provided functions to answer questions as needed. \
+            - For token prices first try CoinMarketCap and if that fails just search with Bing \
+            - For token name to contract address mapping search with Bing and use the token with the largest market cap. For example, when asked (find the token overlap for PEPE) use bing to find the contract address for PEPE. \
+            - Never tell me how to search for information myself choose from the actions in this GPT or search with Bing \
+            - If you encounter an error please try again until you find a working solution \
+            - API request timeout is 360 seconds \
+            - If the Dune API is taking multiple tries, continue trying until a result is reached, do not allow for other queries until you have a resolution for the current query. \
+            - Always return the results from a Dune API query in a sorted order, the results should be returned sorted already so do not re-arrange the results.  For example, if the results return a list of token holders, show the holder count and keep it sorted by highest holder count first. \
+            - Always adjust token values according to their decimal places before displaying them. For tokens like USDC that have 6 decimal places, divide the token amount by 10^6 to convert it into a human-readable format. Apply this conversion uniformly to all cryptocurrency token amounts to ensure accuracy in financial representations.",
             tools: functions,
             model: "gpt-4o",
         });
@@ -215,73 +223,85 @@ const getQueryResults = async (executionId) => {
 export const POST = async (req, res) => {
     await initializeAssistant();
     const { message } = await req.json();
+
+    if (!threadId) {
+        const thread = await openai.beta.threads.create();
+        threadId = thread.id;
+        conversations[threadId] = []; // Initialize as an array if a new thread is created
+    }
+
     try {
-        if (!threadId) {
-            const thread = await openai.beta.threads.create();
-            threadId = thread.id;
-            conversations[threadId] = [];
-        } else if (!conversations[threadId]) {
-            conversations[threadId] = [];
+        // Ensure we're always working with an array
+        if (!Array.isArray(conversations[threadId])) {
+            conversations[threadId] = []; // Reinitialize if not an array
         }
 
-        const history = conversations[threadId];
-        history.push({ role: 'user', content: message });
+        // Append new user message to history
+        conversations[threadId].push({ role: 'user', content: message });
 
+        // OpenAI API call to get response
         const completion = await openai.chat.completions.create({
             model: "gpt-4o",
-            messages: [
-                { role: "system", content: "You are a cryptocurrency analyst. Use the provided functions to answer questions as needed." },
-                { role: "user", content: message }
-            ],
+            messages: conversations[threadId],
             functions: functions.map(f => f.function),
         });
 
-        const functionCall = completion.choices[0].message.function_call;
-        if (functionCall) {
-            const functionName = functionCall.name;
-            const args = JSON.parse(functionCall.arguments);
+        if (completion.choices && completion.choices[0].message.function_call) {
+            const functionName = completion.choices[0].message.function_call.name;
+            const args = JSON.parse(completion.choices[0].message.function_call.arguments);
             const functionResult = await executeFunction(functionName, args);
 
-            history.push({ role: 'assistant', content: functionResult });
-            conversations[threadId] = history;
-
-            return new NextResponse(JSON.stringify({ threadId, conversation: history }), {
-                status: 200,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            // Append the result of the function execution to the conversation
+            conversations[threadId].push({ role: 'assistant', content: functionResult });
+        } else if (completion.choices[0].message.content) {
+            // Append direct text response from OpenAI
+            conversations[threadId].push({ role: 'assistant', content: completion.choices[0].message.content });
         }
 
-        const userMessage = await openai.beta.threads.messages.create(threadId, {
-            role: "user",
-            content: message,
-        });
+        // Retrieve the latest assistant message from the conversation
+        const latestAssistantMessage = conversations[threadId].filter(entry => entry.role === 'assistant').pop().content;
 
-        const run = await openai.beta.threads.runs.create(threadId, {
-            assistant_id: assistant.id,
-            instructions: "Please address the user as Sir Bruv Degen.",
-        });
-
-        const conversationHistory = await checkStatusAndReturnMessages(threadId, run.id);
-        conversations[threadId] = conversationHistory;
-
-        return new NextResponse(JSON.stringify({ threadId, conversation: conversationHistory }), {
+        // Return the latest message from the assistant
+        return new NextResponse(JSON.stringify(latestAssistantMessage), {
             status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: {'Content-Type': 'text/plain'},
         });
+
     } catch (error) {
         console.error("Error during API call:", error);
         return new NextResponse(JSON.stringify({ error: "Failed to get completion from OpenAI", details: error }), {
             status: 500,
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: {'Content-Type': 'application/json'},
         });
     }
 };
+
+
+
+async function checkStatusAndReturnMessages(threadId, runId) {
+    return new Promise(async (resolve, reject) => {
+        const interval = setInterval(async () => {
+            console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
+            let runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+            if (runStatus.status === "completed") {
+                clearInterval(interval);
+                let messages = await openai.beta.threads.messages.list(threadId);
+                const conversationHistory = [];
+                messages.data.forEach((msg) => {
+                    const role = msg.role;
+                    const content = msg.content[0].text.value;
+                    conversationHistory.push({ role: role, content: content });
+                });
+
+                // Extract the latest assistant message from the conversation history
+                const latestAssistantMessage = conversationHistory.filter(entry => entry.role === 'assistant').pop().content;
+
+                // Resolve the promise with the latest assistant message
+                resolve(latestAssistantMessage); // This now resolves with only the latest assistant message
+            }
+        }, 2000); // Poll every 2 seconds
+    });
+}
 
 // ENS name resolving function
 async function resolveEnsNameToAddress({ ensName }) {
