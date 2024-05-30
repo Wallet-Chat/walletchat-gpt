@@ -266,7 +266,24 @@ const functions: ChatCompletionTool[] = [
                 required: ["accountId"]
             }
         }
-    }
+    },
+    {
+        type: "function",
+        function: {
+            name: "getBraveSearchResults",
+            description: "Retrieve web search results from Brave Browser's Search API",
+            parameters: {
+                type: "object",
+                properties: {
+                    query: {
+                        type: "string",
+                        description: "The search query to submit to Brave Search"
+                    }
+                },
+                required: ["query"]
+            }
+        }
+    }    
 ];
 
 let threadId: string;  // Store the thread ID
@@ -344,6 +361,8 @@ const executeFunction = async (functionName: string, args: any, userQuestion: st
             return await getSolanaTokenPrice(args.tokenId);
         case "getSolanaAccountNFTs":
             return await getSolanaAccountNFTs(args.accountId);
+        case "getBraveSearchResults":
+            return await getBraveSearchResults(args.query);            
         default:
             throw new Error(`Unknown function: ${functionName}`);
     }
@@ -549,6 +568,28 @@ async function resolveEnsNameToAddress({ ensName } : { ensName: string }) {
         return `The Ethereum address for ${ensName} is ${response.data.address}`;
     } else {
         throw new Error(`Failed to resolve ENS name. Status code: ${response.status}`);
+    }
+}
+
+async function getBraveSearchResults(query: string): Promise<string> {
+    const url = `https://api.search.brave.com/res/v1/web/search`;
+    const params = { q: query }; // The query parameter
+    const headers = {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip',
+        'X-Subscription-Token': process.env.BRAVE_API_KEY // Your Brave API key stored in environment variables
+    };
+
+    try {
+        const response = await axios.get(url, { headers, params });
+        if (response.status === 200) {
+            return JSON.stringify(response.data, null, 2); // Returning stringified JSON for the example
+        } else {
+            return 'Failed to fetch search results';
+        }
+    } catch (error) {
+        console.error('Error fetching Brave search results:', error);
+        return 'Error occurred while fetching search results';
     }
 }
 
