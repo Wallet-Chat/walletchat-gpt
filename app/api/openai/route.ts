@@ -10,6 +10,7 @@ const openai = new OpenAI({
 });
 const DUNE_API_KEY = process.env.DUNE_API_KEY;
 const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY;
+const ASSISTANT_ID = process.env.OPEN_AI_ASSISTANT;
 export const maxDuration = 300; // This function can run for a maximum of 5 seconds
 export const dynamic = 'force-dynamic';
 
@@ -409,59 +410,77 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
             conversations[threadId] = [];
         }
     
-        // Append new user message to history
-        conversations[threadId].push({ role: 'user', content: message });
+       
     
         let functionResult;
         let keepProcessing = true;
         let previousCalls: string[] = []; // Array to keep track of previous function calls and their arguments
     
-        while (keepProcessing) {
-            // OpenAI API call to get response
-            const completion = await openai.chat.completions.create({
-                model: "gpt-4o",
-                messages: conversations[threadId],
-                functions: functions.map(f => f.function),
-                function_call: "auto"
-            });
-    
-            if (completion.choices && completion.choices[0].message.function_call) {
-                const functionName = completion.choices[0].message.function_call.name;
-                const args = JSON.parse(completion.choices[0].message.function_call.arguments);
-    
-                // Create a string representation of the function call and its arguments to check for duplicates
-                const callSignature = `${functionName}(${JSON.stringify(args)})`;
-                console.log("call signature: ", callSignature)
-                console.log("previous Calls: ", previousCalls)
-    
-                if (previousCalls.includes(callSignature)) {
-                    // If this function call with these arguments was previously made, break the loop to avoid infinite recursion
-                    keepProcessing = false;
-                } else {
-                    // Store the call signature in the history
-                    previousCalls.push(callSignature);
-    
-                    // Execute the function and store the result
-                    functionResult = await executeFunction(functionName, args, message);
-    
-                    // Append the result of the function execution to the conversation
-                    conversations[threadId].push({ role: 'assistant', content: functionResult });
-    
-                    // Continue processing by default, unless stopped by duplicate detection
-                    keepProcessing = true;
-                }
-            } else {
-                // If no function call is suggested, append direct text response from OpenAI and stop processing
-                conversations[threadId].push({ role: 'assistant', content: completion.choices[0].message.content });
-                keepProcessing = false;
+        // while (keepProcessing) {
+            // create a message using the threadID
+            const newMessage = await openai.beta.threads.messages.create(threadId, {
+                role: 'user',
+                content: message
+            })
+
+            if(newMessage && newMessage.role === 'user') {
+               // Append new user message to history
+               conversations[threadId].push({ role: 'user', content: newMessage });
             }
-        }
+
+            // create a run using the threadID and assistantID
+            const run = await openai.beta.threads.runs.create(threadId, {
+                assistant_id: ASSISTANT_ID as string,
+                tool_choice: "auto",
+            });
+
+            const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
+
+            console.log('response:', retrieve);
+            // const completion = await openai.chat.completions.create({
+            //     model: "gpt-4o",
+            //     messages: conversations[threadId],
+            //     functions: functions.map(f => f.function),
+            //     function_call: "auto"
+            // });
+    
+            // if (completion.choices && completion.choices[0].message.function_call) {
+            //     const functionName = completion.choices[0].message.function_call.name;
+            //     const args = JSON.parse(completion.choices[0].message.function_call.arguments);
+    
+            //     // Create a string representation of the function call and its arguments to check for duplicates
+            //     const callSignature = `${functionName}(${JSON.stringify(args)})`;
+            //     console.log("call signature: ", callSignature)
+            //     console.log("previous Calls: ", previousCalls)
+    
+            //     if (previousCalls.includes(callSignature)) {
+            //         // If this function call with these arguments was previously made, break the loop to avoid infinite recursion
+            //         keepProcessing = false;
+            //     } else {
+            //         // Store the call signature in the history
+            //         previousCalls.push(callSignature);
+    
+            //         // Execute the function and store the result
+            //         functionResult = await executeFunction(functionName, args, message);
+    
+            //         // Append the result of the function execution to the conversation
+            //         conversations[threadId].push({ role: 'assistant', content: functionResult });
+    
+            //         // Continue processing by default, unless stopped by duplicate detection
+            //         keepProcessing = true;
+            //     }
+            // } else {
+            //     // If no function call is suggested, append direct text response from OpenAI and stop processing
+            //     conversations[threadId].push({ role: 'assistant', content: completion.choices[0].message.content });
+            //     keepProcessing = false;
+            // }
+        // }
     
         // Retrieve the latest assistant message from the conversation
-        const latestAssistantMessage = conversations[threadId].filter((entry: { role: string; }) => entry.role === 'assistant').pop().content;
+        // const latestAssistantMessage = conversations[threadId].filter((entry: { role: string; }) => entry.role === 'assistant').pop().content;
     
         // Return the latest message from the assistant
-        return new NextResponse(JSON.stringify(latestAssistantMessage), {
+        return new NextResponse(JSON.stringify(retrieve), {
             status: 200,
             headers: { 'Content-Type': 'text/plain' },
         });
@@ -547,6 +566,7 @@ async function checkStatusAndReturnMessages(threadId: string, runId: string) {
         const interval = setInterval(async () => {
             console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
             let runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+            console.log(runStatus.status)
             if (runStatus.status === "completed") {
                 clearInterval(interval);
                 let messages = await openai.beta.threads.messages.list(threadId);
