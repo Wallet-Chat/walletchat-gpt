@@ -386,7 +386,7 @@ const executeFunction = async (functionName: string, args: any, userQuestion: st
 
 
 export const POST = async (req: NextRequest, res: NextResponse) => {
-    await initializeAssistant();
+    // await initializeAssistant();
     const { message } = await req.json();
     const walletAddress = getWalletAddress(req); // Retrieve the wallet address from global state
     if (!walletAddress) {
@@ -431,8 +431,9 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
             // create a run using the threadID and assistantID
             const run = await openai.beta.threads.runs.create(threadId, {
                 assistant_id: ASSISTANT_ID as string,
-                tool_choice: "auto",
             });
+
+            console.log(run);
 
             const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
 
@@ -585,6 +586,23 @@ async function checkStatusAndReturnMessages(threadId: string, runId: string) {
             }
         }, 2000); // Poll every 2 seconds
     });
+}
+
+async function submitToolOutputs(threadId: string, runId: string, toolOutputs: any) {
+    try {
+        const run = await openai.beta.threads.runs.submitToolOutputs(
+          threadId,
+          runId,
+          { tool_outputs: toolOutputs }
+        );
+    
+        console.log("run in submit tool output", run);
+    
+        return Response.json({ run: run, success: true });
+    } catch (e) {
+        console.log("Error in submit tool output", e);
+        return Response.json({ error: e, success: false });
+    }
 }
 
 // ENS name resolving function
