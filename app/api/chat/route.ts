@@ -9,7 +9,7 @@ const HUMANLOOP_API_KEY = process.env.HUMANLOOP_API_KEY
 const humanloop = new Humanloop({
   useFetch: true, // useFetch must be "true" for humanloop to work in Next.js edge runtime,
   openaiApiKey: process.env.OPENAI_API_KEY,
-  apiKey: HUMANLOOP_API_KEY as string
+  apiKey: HUMANLOOP_API_KEY as string,
 })
 
 export async function POST(req: Request) {
