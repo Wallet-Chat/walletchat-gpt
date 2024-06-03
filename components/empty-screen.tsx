@@ -29,10 +29,7 @@ const prompts = [
 export function EmptyScreen({ setInput }: Pick<UseChatHelpers, 'setInput'>) {
   return (
     <>
-      <div className="greet">
-          <p><span>How can I help you today?</span></p>
-      </div>
-      <div className="cards">
+      <div className="cards mt-40 hidden md:flex">
           {prompts?.map((item) => (
               <div className="card" onClick={() => setInput(item.prompt)} key={item.id}>
                   <p>{`${item.prompt.slice(0, 50)}...`}</p>

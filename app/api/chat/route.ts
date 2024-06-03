@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   const { messages } = await req.json()
 
   const chatResponse = await humanloop.chatStream({
-    project: 'sdk-example',
+    project: 'crypto-bot',
     messages,
     model_config: {
       model: 'gpt-3.5-turbo',
