@@ -320,7 +320,7 @@ async function askAIForExplanation(message: string): Promise<string> {
     }
 }
 
-const executeFunction = async (functionName: string, args: any, userQuestion: string, recursionDepth = 0): Promise<any> => {
+const executeFunction = async (functionName: string, args: any, recursionDepth = 0): Promise<any> => {
     const MAX_RECURSION_DEPTH = 5;
     let result: any;
     let askForExplanation = false;
@@ -329,7 +329,7 @@ const executeFunction = async (functionName: string, args: any, userQuestion: st
         throw new Error("Maximum recursion depth exceeded");
     }
 
-    console.log("Executing function:", functionName, args, userQuestion);
+    console.log("Executing function:", functionName, args);
 
     switch (functionName) {
         case "getCryptocurrencyPrice":
@@ -368,7 +368,7 @@ const executeFunction = async (functionName: string, args: any, userQuestion: st
     //     let explanation;
     //     try {
     //         const resultValue = result.result ? result.result : result;
-    //         const message = `Question: ${userQuestion} Result: ${resultValue}`;
+    //         const message = `Result: ${resultValue}`;
     //         explanation = await askAIForExplanation(message);
     //         result = `${resultValue} </br></br> Result Explanation: ${explanation}`;
     //     } catch (error) {
@@ -409,8 +409,6 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
         if (!Array.isArray(conversations[threadId])) {
             conversations[threadId] = [];
         }
-    
-       
     
         let functionResult;
         let keepProcessing = true;
@@ -495,8 +493,8 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
     }    
 };
 
-
-const executeDuneQuery = async (functionName: string, args: any) => {
+const executeDuneQuery = async (functionName: string, args: JSON) => {
+    console.log("execute Dune Query with args: ", args)
     const queryIds: any = {
         executeSolanaTokenOverlap: 3623869,
         executeSolanaTokenWalletProfitLoss: 3657856,
@@ -562,52 +560,104 @@ const getQueryResults = async (executionId: string) => {
     }
 };
 
-async function checkStatusAndReturnMessages(threadId: string, runId: string) {
-    return new Promise(async (resolve, reject) => {
-        const interval = setInterval(async () => {
-            console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
-            let runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
-            console.log(runStatus.status)
-            if (runStatus.status === "completed") {
-                clearInterval(interval);
-                let messages = await openai.beta.threads.messages.list(threadId);
-                const conversationHistory: any = [];
-                messages.data.forEach((msg: any) => {
-                    const role = msg.role;
-                    const content = msg.content[0].text.value;
-                    conversationHistory.push({ role: role, content: content });
-                });
-
-                // Extract the latest assistant message from the conversation history
-                const latestAssistantMessage = conversationHistory.filter((entry: any) => entry.role === 'assistant').pop().content;
-
-                // Resolve the promise with the latest assistant message
-                resolve(latestAssistantMessage); // This now resolves with only the latest assistant message
-            }
-        }, 2000); // Poll every 2 seconds
-    });
+interface Message {
+  role: string;
+  content: string;
 }
 
-async function submitToolOutputs(threadId: string, runId: string, toolOutputs: any) {
+interface ToolOutput {
+    tool_call_id: string;
+    output: string;
+}
+
+async function checkStatusAndReturnMessages(threadId: string, runId: string): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const interval = setInterval(async () => {
+      try {
+        console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
+        const runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+        console.log(runStatus.status);
+
+        if (runStatus.status === "completed") {
+          clearInterval(interval);
+          const messages = await openai.beta.threads.messages.list(threadId);
+          const conversationHistory: Message[] = messages.data.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content[0].text.value
+          }));
+
+          const latestAssistantMessage = conversationHistory.filter(entry => entry.role === 'assistant').pop()?.content || "No assistant message found";
+
+          resolve(latestAssistantMessage);
+        } else if (runStatus.status === "requires_action") {
+          const toolsToCall = runStatus.required_action?.submit_tool_outputs.tool_calls;
+          console.log(toolsToCall?.length);
+          let tool_outputs: ToolOutput[] = []
+
+          for (const tool of toolsToCall) {
+            console.log(tool.function.name);
+            console.log(tool.function.arguments);
+
+            let tool_output: any = { status: 'error', message: 'function not found' };
+
+            // Execute the function and store the result
+            let functionResult = await executeFunction(tool.function.name, tool.function.arguments);
+            console.log("Function Call Result: ", functionResult);
+            tool_output = functionResult;
+
+            // Append the result of the function execution to the conversation
+            conversations[threadId].push({ role: 'assistant', content: functionResult });
+
+            tool_outputs.push({
+                tool_call_id: tool.id,
+                output: JSON.stringify(tool_output)
+            });
+            console.log("added to tools_outputs: ", tool_outputs);
+          }
+
+          // Send back output
+          await submitToolOutputs(threadId, runId, tool_outputs);
+        }
+      } catch (error) {
+        console.error("An error occurred:", error);
+        clearInterval(interval);
+        reject(error);
+      }
+    }, 2000); // Poll every 2 seconds
+  });
+}
+
+async function submitToolOutputs(threadId: string, runId: string, tool_outputs: ToolOutput[]) {
     try {
+        console.log("submitting tool outputs: ", threadId, runId, tool_outputs);
         const run = await openai.beta.threads.runs.submitToolOutputs(
-          threadId,
-          runId,
-          { tool_outputs: toolOutputs }
+            threadId,
+            runId,
+            { tool_outputs }
         );
     
         console.log("run in submit tool output", run);
     
-        return Response.json({ run: run, success: true });
+        return new NextResponse(JSON.stringify({ run: run, success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
     } catch (e) {
         console.log("Error in submit tool output", e);
-        return Response.json({ error: e, success: false });
+        return new NextResponse(JSON.stringify({ error: e, success: false }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
 }
 
+interface EnsNameInput {
+    ensName: string;
+}
 // ENS name resolving function
-async function resolveEnsNameToAddress({ ensName } : { ensName: string }) {
-    console.log(`resolveEnsNameToAddress called with ensName: ${ensName}`);
+async function resolveEnsNameToAddress(input: string) {
+    const { ensName }: EnsNameInput = JSON.parse(input);
+    console.log(`resolveEnsNameToAddress called with ensName:`, ensName);
     const baseUrl = 'https://api.v2.walletchat.fun';
     const response = await axios.get(`${baseUrl}/resolve_name/${ensName}`);
     if (response.status === 200) {
