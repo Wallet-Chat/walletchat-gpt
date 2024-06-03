@@ -6,8 +6,7 @@ import ContextProvider from "@/context/Context";
 import Web3ModalProvider from "@/context/Wagmi";
 import { config } from '@/config/wagmi'
 import { cookieToInitialState } from 'wagmi'
-
-const inter = Inter({ subsets: ["latin"] });
+import { Providers } from '@/components/providers'
 
 export const metadata: Metadata = {
   title: "WalletChat AI",
@@ -21,12 +20,19 @@ export default function RootLayout({
 }>) {
   const initialState = cookieToInitialState(config, headers().get('cookie'))
   return (
-    <Web3ModalProvider initialState={initialState}>
-      <ContextProvider>
-        <html lang="en">
-          <body className={inter.className}>{children}</body>
-        </html>
-      </ContextProvider>
-    </Web3ModalProvider>
+    <html lang="en" suppressHydrationWarning>
+    <head />
+    <body>
+      <Web3ModalProvider initialState={initialState}>
+        <Providers attribute="class" defaultTheme="system" enableSystem>
+          <ContextProvider>
+            <div className="flex min-h-screen flex-col">
+              <main className="flex flex-1 flex-col bg-muted/50">{children}</main>
+            </div>
+          </ContextProvider>
+        </Providers>
+      </Web3ModalProvider>
+    </body>
+  </html>
   );
 }

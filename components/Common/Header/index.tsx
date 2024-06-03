@@ -16,33 +16,29 @@ function Header() {
   const { address, isConnected } = useAccount()
   const [darkMode, setDarkMode] = useState(false);
 
-  useEffect(() => {
-    connectWallet();
-  }, [isConnected, address])
+  // useEffect(() => {
+  //   connectWallet();
+  // }, [isConnected, address])
 
-  useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      const isDark = localStorage.getItem("theme") === "dark";
-      setDarkMode(isDark);
-      if (isDark) {
-        setDark();
-      } else {
-        setLight();
-      }
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (typeof localStorage !== 'undefined') {
+  //     const isDark = localStorage.getItem("theme") === "dark";
+  //     setDarkMode(isDark);
+  //     if (isDark) {
+  //       setDark();
+  //     } else {
+  //       setLight();
+  //     }
+  //   }
+  // }, []);
 
-  useEffect(() => {
-      if (localStorage.getItem("theme") == "dark") {
-        setDark();
-      } else {
-        setLight();
-      }
-  }, []);
-
-  useEffect(() => {
-    connectWallet()
-  }, [isConnected, address])
+  // useEffect(() => {
+  //     if (localStorage.getItem("theme") == "dark") {
+  //       setDark();
+  //     } else {
+  //       setLight();
+  //     }
+  // }, []);
 
   const changeMode = (e: any) => {
       e.preventDefault();
@@ -65,21 +61,21 @@ function Header() {
       document.documentElement.setAttribute("data-theme", "light");
   };
 
-  const connectWallet = async () => {
-    try {
-      const response = await axios.post('/api/connectWallet', { walletAddress: address });
-      console.log(`Wallet connected: ${address}`);
-    } catch (error) {
-      toast.error("Failed to connect wallet.");
-      console.log("Error connecting wallet:", error);
-    }
-  };
+  // const connectWallet = async () => {
+  //   try {
+  //     const response = await axios.post('/api/connectWallet', { walletAddress: address });
+  //     console.log(`Wallet connected: ${address}`);
+  //   } catch (error) {
+  //     toast.error("Failed to connect wallet.");
+  //     console.log("Error connecting wallet:", error);
+  //   }
+  // };
 
   return (
     <div>
-      {!isConnected && (
+      {/* {!isConnected && ( */}
         <Alert />
-      )}
+      {/* )} */}
       <div className="header">
         <a href="/">
           <h1 className="header-text">
@@ -94,14 +90,14 @@ function Header() {
           <a href="/dashboard">
             <p className="link">Coinlist</p>
           </a>
-          {isConnected && (
+          {/* {isConnected && (
             <div className="px-4 py-2 rounded-full bg-black text-white cursor-pointer" onClick={() => disconnect()}>
               <p className="text-white">{`${address?.slice(0, 7)}...${address?.slice(35)}`}</p>
             </div>
-          )}
-          {!isConnected && (
+          )} */}
+          {/* {!isConnected && ( */}
             <Button text={"connect wallet"} onClick={() => open()} />
-          )}
+          {/* )} */}
         </div>
         <div className="drawer-component">
           <TemporaryDrawer />

@@ -32,7 +32,11 @@ export async function POST(req: NextRequest) {
                 headers: {'Content-Type': 'application/json'}
             });
             setWalletAddress(res, walletAddress);
-            return res;
+            // return res;
+            return new NextResponse(JSON.stringify(res), {
+                status: 200,
+                headers: {'Content-Type': 'application/json'}
+            });
         } else {
             return new NextResponse(JSON.stringify({ message: 'Invalid wallet address provided' }), {
                 status: 400,
