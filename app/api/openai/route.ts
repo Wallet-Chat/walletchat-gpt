@@ -340,10 +340,9 @@ function parseArguments(args: any): any {
     return args;
 }
 
-const executeFunction = async (functionName: string, args: any, recursionDepth = 0): Promise<any> => {
+async function executeFunction(functionName: string, args: string, recursionDepth = 0): Promise<any> {
     const MAX_RECURSION_DEPTH = 5;
     let result: any;
-    let askForExplanation = false;
 
     if (recursionDepth > MAX_RECURSION_DEPTH) {
         throw new Error("Maximum recursion depth exceeded");
@@ -351,59 +350,53 @@ const executeFunction = async (functionName: string, args: any, recursionDepth =
 
     console.log("Executing function:", functionName, args);
 
+    // Parse args string to an object
+    const parsedArgs = parseArguments(args)
+
     switch (functionName) {
         case "getCryptocurrencyPrice":
-            result = await getCryptocurrencyPrice(args);
+            result = await getCryptocurrencyPrice(parsedArgs);
             break;
         case "resolveEnsNameToAddress":
-            result = await resolveEnsNameToAddress(args);
+            result = await resolveEnsNameToAddress(parsedArgs.ensName);
             break;
         case "etherscanQuery":
-            result = await etherscanApiQuery(args);
-            askForExplanation = true; 
+            result = await etherscanApiQuery(parsedArgs);
             break;
         case "executeSolanaTokenOverlap":
         case "executeSolanaTokenWalletProfitLoss":
         case "executeSolanaTokenOwnerInfo":
         case "executeEthereumTokenOverlap":
-            const executionId = await executeDuneQuery(functionName, args);
+            const executionId = await executeDuneQuery(functionName, parsedArgs);
             result = await pollQueryStatus(executionId);
             break;
         case "getSolanaAccountPortfolio":
-            const portfolioData = await getSolanaAccountPortfolio(args.accountId);
+            console.log("Get Solana Portfolio for: ", parsedArgs)
+            const portfolioData = await getSolanaAccountPortfolio(parsedArgs.accountId);
             result = formatSolanaPortfolio(portfolioData);
             break;
         case "getSolanaTokenPrice":
-            result = await getSolanaTokenPrice(args.tokenId);
+            result = await getSolanaTokenPrice(parsedArgs.tokenId);
             break;
         case "getSolanaAccountNFTs":
-            result = await getSolanaAccountNFTs(args.accountId);
+            result = await getSolanaAccountNFTs(parsedArgs.accountId);
             break;
         default:
             throw new Error(`Unknown function: ${functionName}`);
     }
 
-    // Ask for an explanation if necessary - TBD - needs work for streaming a limiting input (transaction results can be too long and error out)
-    // if (result && askForExplanation) {
-    //     let explanation;
-    //     try {
-    //         const resultValue = result.result ? result.result : result;
-    //         const message = `Result: ${resultValue}`;
-    //         explanation = await askAIForExplanation(message);
-    //         result = `${resultValue} </br></br> Result Explanation: ${explanation}`;
-    //     } catch (error) {
-    //         console.error("Failed to get explanation from AI:", error);
-    //         explanation = "Failed to generate an explanation.";
-    //         result = `Question: ${userQuestion}\nResult: ${JSON.stringify(result)}\nExplanation: ${explanation}`;
-    //     }
+    // Check if result is a string before applying the replacements
+    // if (typeof result === 'string') {
+    //     console.log("result format!!: ", typeof result)
+    //     const resultFormatted = result.split("\n\n").join("</br>");
+    //     const resultFormatted2 = resultFormatted.split("\n").join("</br>");
+    //     return resultFormatted2;
+    // } else {
+    //     console.log("result format: ", typeof result)
     // }
 
-    const resultFormatted = result.split("\n\n").join("</br>");
-    const resultFormatted2 = resultFormatted.split("\n").join("</br>");
-
-    return resultFormatted2;
-};
-
+    return result;
+}
 
 export const POST = async (req: NextRequest, res: NextResponse) => {
     // await initializeAssistant();
@@ -417,6 +410,7 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
     } else {
         threadId = threadIdByWallet[walletAddress];
         if (!threadId) {
+            console.log("***** creating new thread for wallet: ", walletAddress)
             const thread = await openai.beta.threads.create();
             threadId = thread.id;
             conversations[threadId] = []; // Initialize as an array if a new thread is created
@@ -466,7 +460,7 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
 
             const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
 
-            console.log('response:', retrieve);
+            console.log('response for runID:', run?.id, retrieve);
 
             // Unset the pending status after function call is complete
             threadStatus[threadId] = 'completed';
@@ -533,7 +527,6 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
 };
 
 const executeDuneQuery = async (functionName: string, args: any) => {
-    args = parseArguments(args) //sometimes its double serialized - not sure why so checking here to remove
     console.log("execute Dune Query with args: ", args)
     const queryIds: any = {
         executeSolanaTokenOverlap: 3623869,
@@ -632,38 +625,40 @@ async function checkStatusAndReturnMessages(threadId: string, runId: string): Pr
                             role: msg.role,
                             content: msg.content[0].text.value
                         }));
-
-                        const latestAssistantMessage = conversationHistory.filter(entry => entry.role === 'assistant').pop()?.content || "No assistant message found";
-
+                        const latestAssistantMessage = conversationHistory.slice().find(entry => entry.role === 'assistant')?.content || "No assistant message found";
+                        //console.log("completed - convoHistory: ", conversationHistory);
+                        //console.log("Latest assistant message: ", latestAssistantMessage);
                         resolve(latestAssistantMessage);
                     } else if (runStatus.status === "requires_action") {
                         const toolsToCall = runStatus.required_action?.submit_tool_outputs.tool_calls;
                         console.log(toolsToCall?.length);
                         let tool_outputs: ToolOutput[] = [];
 
-                        for (const tool of toolsToCall) {
-                            console.log(tool.function.name);
-                            console.log(tool.function.arguments);
+                        if(toolsToCall) {
+                            for (const tool of toolsToCall) {
+                                console.log(tool.function.name);
+                                console.log(tool.function.arguments);
 
-                            let tool_output: any = { status: 'error', message: 'function not found' };
+                                let tool_output: any = { status: 'error', message: 'function not found' };
 
-                            // Execute the function and store the result
-                            let functionResult = await executeFunction(tool.function.name, tool.function.arguments);
-                            console.log("Function Call Result: ", functionResult);
-                            tool_output = functionResult;
+                                // Execute the function and store the result
+                                let functionResult = await executeFunction(tool.function.name, tool.function.arguments);
+                                console.log("Function Call Result: ", functionResult);
+                                tool_output = functionResult;
 
-                            // Append the result of the function execution to the conversation
-                            conversations[threadId].push({ role: 'assistant', content: functionResult });
+                                // Append the result of the function execution to the conversation
+                                conversations[threadId].push({ role: 'assistant', content: functionResult });
 
-                            tool_outputs.push({
-                                tool_call_id: tool.id,
-                                output: JSON.stringify(tool_output)
-                            });
-                            console.log("added to tools_outputs: ", tool_outputs);
+                                tool_outputs.push({
+                                    tool_call_id: tool.id,
+                                    output: JSON.stringify(tool_output)
+                                });
+                                console.log("added to tools_outputs: ", tool_outputs);
+                            }
+
+                            // Send back output
+                            await submitToolOutputs(threadId, runId, tool_outputs);
                         }
-
-                        // Send back output
-                        await submitToolOutputs(threadId, runId, tool_outputs);
                     } 
                     
                     // Clear the mutex
@@ -710,8 +705,7 @@ interface EnsNameInput {
     ensName: string;
 }
 // ENS name resolving function
-async function resolveEnsNameToAddress(input: string) {
-    const { ensName }: EnsNameInput = JSON.parse(input);
+async function resolveEnsNameToAddress(ensName: string) {
     console.log(`resolveEnsNameToAddress called with ensName:`, ensName);
     const baseUrl = 'https://api.v2.walletchat.fun';
     const response = await axios.get(`${baseUrl}/resolve_name/${ensName}`);
@@ -723,15 +717,13 @@ async function resolveEnsNameToAddress(input: string) {
 }
 
 // Generic function to interact with the Etherscan API
-async function etherscanApiQuery(params: string) {
-    // Parse the input params string to an object
-    const parsedParams = JSON.parse(params);
-    console.log("Received params for Etherscan API:", parsedParams);
+async function etherscanApiQuery(params: any) {
+    console.log("Received params for Etherscan API:", params);
 
     const baseUrl = 'https://api.etherscan.io/api';
     const queryParams = {
         apikey: process.env.ETHERSCAN_API_KEY, // Assuming API Key is stored in environment variables
-        ...parsedParams // Spread additional parameters into the query
+        ...params // Spread additional parameters into the query
     };
 
     try {
@@ -740,8 +732,8 @@ async function etherscanApiQuery(params: string) {
         console.log("Received response from Etherscan:", response.data); // Debug print to check response data
 
         if (response.status === 200) {
-            return formatEtherscanResponse({data: response.data.result, params: params})
-            // return response.data; // Return the whole response data for flexibility
+            //return formatEtherscanResponse({data: response.data.result, params: params})
+            return response.data; // Return the whole response data for flexibility
         } else {
             throw new Error(`Etherscan API call failed. Status: ${response.status}`);
         }
