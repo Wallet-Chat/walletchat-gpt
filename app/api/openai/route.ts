@@ -14,21 +14,22 @@ const ASSISTANT_ID = process.env.OPEN_AI_ASSISTANT;
 export const maxDuration = 300; // This function can run for a maximum of 5 seconds
 export const dynamic = 'force-dynamic';
 
-interface EtherscanApiParams {
-    module?: string; // The module to be used
-    action?: string; // The action to be called
-    address?: string; // Ethereum address for the query
-    tag?: "latest" | "pending" | "earliest"; // The state of the balance (latest or a block number)
-    startblock?: number; // The start block number for queries that involve transaction or event lists
-    endblock?: number; // The end block cannot exceed 9999999
-    page?: number; // The page number for queries that support pagination
-    offset?: number; // The number of results to return per page for queries that support pagination
-    sort?: "asc" | "desc"; // The sorting for the results (asc or desc), applicable to transaction and event lists
-    contractaddress?: string; // The contract address for token queries (tokentx, tokennfttx, token1155tx)
-    blocktype?: "blocks" | "uncles"; // The type of blocks to query for 'getminedblocks'
-    blockno?: number; // The specific block number for the 'balancehistory' query
-    to?: string; // The address the transaction is directed to. Use in eth_call
-}
+// interface EtherscanApiParams {
+//     module?: string; // The module to be used
+//     action?: string; // The action to be called
+//     address?: string; // Ethereum address for the query
+//     tag?: "latest" | "pending" | "earliest"; // The state of the balance (latest or a block number)
+//     startblock?: number; // The start block number for queries that involve transaction or event lists
+//     endblock?: number; // The end block cannot exceed 9999999
+//     page?: number; // The page number for queries that support pagination
+//     offset?: number; // The number of results to return per page for queries that support pagination
+//     sort?: "asc" | "desc"; // The sorting for the results (asc or desc), applicable to transaction and event lists
+//     contractaddress?: string; // The contract address for token queries (tokentx, tokennfttx, token1155tx)
+//     blocktype?: "blocks" | "uncles"; // The type of blocks to query for 'getminedblocks'
+//     blockno?: number; // The specific block number for the 'balancehistory' query
+//     to?: string; // The address the transaction is directed to. Use in eth_call
+//     apikey?: string;//apikey
+// }
 
 const functions: ChatCompletionTool[] = [
     {
@@ -274,6 +275,7 @@ const functions: ChatCompletionTool[] = [
 let threadId: string;  // Store the thread ID
 const conversations: any = {};  // In-memory store for conversations
 const threadIdByWallet: any = {};  // In-memory store for conversations
+const threadStatus: any = {};  // In-memory store for thread statuses
 
 let assistant: Assistant;
 
@@ -318,6 +320,24 @@ async function askAIForExplanation(message: string): Promise<string> {
         console.error("Failed to get explanation from AI:", error);
         return "Failed to generate explanation.";
     }
+}
+
+function parseArguments(args: any): any {
+    // If the args is a string, try to parse it
+    if (typeof args === 'string') {
+        try {
+            // Attempt to parse the string
+            const parsedArgs = JSON.parse(args);
+
+            // If parsedArgs is an object, return it, otherwise return the original args
+            return typeof parsedArgs === 'object' ? parsedArgs : args;
+        } catch (e) {
+            // If parsing fails, return the original args
+            return args;
+        }
+    }
+    // If args is already an object, return it directly
+    return args;
 }
 
 const executeFunction = async (functionName: string, args: any, recursionDepth = 0): Promise<any> => {
@@ -410,6 +430,17 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
             conversations[threadId] = [];
         }
     
+        // Check if there is a pending function call for this thread
+        if (threadStatus[threadId] === 'pending') {
+            return new NextResponse(JSON.stringify({ error: "A function call is already in progress for this thread" }), {
+                status: 429, // Too many requests
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        // Mark this thread as having a pending function call
+        threadStatus[threadId] = 'pending';
+
         let functionResult;
         let keepProcessing = true;
         let previousCalls: string[] = []; // Array to keep track of previous function calls and their arguments
@@ -436,6 +467,10 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
             const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
 
             console.log('response:', retrieve);
+
+            // Unset the pending status after function call is complete
+            threadStatus[threadId] = 'completed';
+
             // const completion = await openai.chat.completions.create({
             //     model: "gpt-4o",
             //     messages: conversations[threadId],
@@ -486,6 +521,10 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
     
     } catch (error) {
         console.error("Error during API call:", error);
+
+        // Unset the pending status if there is an error
+        threadStatus[threadId] = 'completed';
+
         return new NextResponse(JSON.stringify({ error: "Failed to get completion from OpenAI", details: error }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
@@ -493,7 +532,8 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
     }    
 };
 
-const executeDuneQuery = async (functionName: string, args: JSON) => {
+const executeDuneQuery = async (functionName: string, args: any) => {
+    args = parseArguments(args) //sometimes its double serialized - not sure why so checking here to remove
     console.log("execute Dune Query with args: ", args)
     const queryIds: any = {
         executeSolanaTokenOverlap: 3623869,
@@ -570,61 +610,76 @@ interface ToolOutput {
     output: string;
 }
 
+const threadMutex: { [threadId: string]: boolean } = {};
+
 async function checkStatusAndReturnMessages(threadId: string, runId: string): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const interval = setInterval(async () => {
-      try {
-        console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
-        const runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
-        console.log(runStatus.status);
+    return new Promise<string>((resolve, reject) => {
+        const interval = setInterval(async () => {
+            try {
+                // If the function is already running for this thread, return immediately or handle as needed
+                if (!threadMutex[threadId]) {
+                    // Set the mutex to indicate the function is running
+                    threadMutex[threadId] = true;
 
-        if (runStatus.status === "completed") {
-          clearInterval(interval);
-          const messages = await openai.beta.threads.messages.list(threadId);
-          const conversationHistory: Message[] = messages.data.map((msg: any) => ({
-            role: msg.role,
-            content: msg.content[0].text.value
-          }));
+                    console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
+                    const runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+                    console.log(runStatus.status);
 
-          const latestAssistantMessage = conversationHistory.filter(entry => entry.role === 'assistant').pop()?.content || "No assistant message found";
+                    if (runStatus.status === "completed") {
+                        clearInterval(interval);
+                        const messages = await openai.beta.threads.messages.list(threadId);
+                        const conversationHistory: Message[] = messages.data.map((msg: any) => ({
+                            role: msg.role,
+                            content: msg.content[0].text.value
+                        }));
 
-          resolve(latestAssistantMessage);
-        } else if (runStatus.status === "requires_action") {
-          const toolsToCall = runStatus.required_action?.submit_tool_outputs.tool_calls;
-          console.log(toolsToCall?.length);
-          let tool_outputs: ToolOutput[] = []
+                        const latestAssistantMessage = conversationHistory.filter(entry => entry.role === 'assistant').pop()?.content || "No assistant message found";
 
-          for (const tool of toolsToCall) {
-            console.log(tool.function.name);
-            console.log(tool.function.arguments);
+                        resolve(latestAssistantMessage);
+                    } else if (runStatus.status === "requires_action") {
+                        const toolsToCall = runStatus.required_action?.submit_tool_outputs.tool_calls;
+                        console.log(toolsToCall?.length);
+                        let tool_outputs: ToolOutput[] = [];
 
-            let tool_output: any = { status: 'error', message: 'function not found' };
+                        for (const tool of toolsToCall) {
+                            console.log(tool.function.name);
+                            console.log(tool.function.arguments);
 
-            // Execute the function and store the result
-            let functionResult = await executeFunction(tool.function.name, tool.function.arguments);
-            console.log("Function Call Result: ", functionResult);
-            tool_output = functionResult;
+                            let tool_output: any = { status: 'error', message: 'function not found' };
 
-            // Append the result of the function execution to the conversation
-            conversations[threadId].push({ role: 'assistant', content: functionResult });
+                            // Execute the function and store the result
+                            let functionResult = await executeFunction(tool.function.name, tool.function.arguments);
+                            console.log("Function Call Result: ", functionResult);
+                            tool_output = functionResult;
 
-            tool_outputs.push({
-                tool_call_id: tool.id,
-                output: JSON.stringify(tool_output)
-            });
-            console.log("added to tools_outputs: ", tool_outputs);
-          }
+                            // Append the result of the function execution to the conversation
+                            conversations[threadId].push({ role: 'assistant', content: functionResult });
 
-          // Send back output
-          await submitToolOutputs(threadId, runId, tool_outputs);
-        }
-      } catch (error) {
-        console.error("An error occurred:", error);
-        clearInterval(interval);
-        reject(error);
-      }
-    }, 2000); // Poll every 2 seconds
-  });
+                            tool_outputs.push({
+                                tool_call_id: tool.id,
+                                output: JSON.stringify(tool_output)
+                            });
+                            console.log("added to tools_outputs: ", tool_outputs);
+                        }
+
+                        // Send back output
+                        await submitToolOutputs(threadId, runId, tool_outputs);
+                    } 
+                    
+                    // Clear the mutex
+                    threadMutex[threadId] = false;
+                }
+            } catch (error) {
+                console.error("An error occurred:", error);
+                clearInterval(interval);
+
+                // Clear the mutex
+                threadMutex[threadId] = false;
+
+                reject(error);
+            }
+        }, 2000); // Poll every 2 seconds
+    });
 }
 
 async function submitToolOutputs(threadId: string, runId: string, tool_outputs: ToolOutput[]) {
@@ -668,13 +723,15 @@ async function resolveEnsNameToAddress(input: string) {
 }
 
 // Generic function to interact with the Etherscan API
-async function etherscanApiQuery(params: EtherscanApiParams) {
-    console.log("Received params for Etherscan API:", params);
+async function etherscanApiQuery(params: string) {
+    // Parse the input params string to an object
+    const parsedParams = JSON.parse(params);
+    console.log("Received params for Etherscan API:", parsedParams);
 
     const baseUrl = 'https://api.etherscan.io/api';
     const queryParams = {
         apikey: process.env.ETHERSCAN_API_KEY, // Assuming API Key is stored in environment variables
-        ...params // Spread additional parameters into the query
+        ...parsedParams // Spread additional parameters into the query
     };
 
     try {
@@ -881,3 +938,4 @@ function formatTokenOverlap(token: any) {
     Token Symbol: ${token.token_symbol}</br>
     `.trim().split("\n").join("  ");
 }
+
