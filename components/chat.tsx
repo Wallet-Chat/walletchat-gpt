@@ -9,6 +9,9 @@ import { EmptyScreen } from '@/components/empty-screen'
 import { cn } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
 import "./Main/Main.css"
+import { useUIState } from 'ai/rsc'
+import { useState } from 'react'
+import { useScrollAnchor } from '@/lib/hooks/use-scroll-anchor'
 
 
 export interface ChatProps extends React.ComponentProps<'div'> {
@@ -17,39 +20,41 @@ export interface ChatProps extends React.ComponentProps<'div'> {
 }
 
 export function Chat({ id, initialMessages, className }: ChatProps) {
-  const { messages, append, reload, stop, isLoading, input, setInput } =
-    useChat({
-      api: '/api/chat',
-      initialMessages,
-      id,
-      body: { id },
-      onResponse(response) {
-        if (response.status !== 200) {
-          toast.error(response.statusText)
-        }
-      }
-    })
+  const [input, setInput] = useState('')
+  const [messages] = useUIState()
+
+  // const { messages, append, reload, stop, isLoading, input, setInput } =
+  //   useChat({
+  //     api: '/api/chat',
+  //     initialMessages,
+  //     id,
+  //     body: { id },
+  //     onResponse(response) {
+  //       if (response.status !== 200) {
+  //         toast.error(response.statusText)
+  //       }
+  //     }
+  //   })
+  const { messagesRef, scrollRef, visibilityRef, isAtBottom, scrollToBottom } = useScrollAnchor()
   return (
     <div className='main'>
       <div className={cn('pb-[200px] pt-4 md:pt-10', className)}>
         {messages.length ? (
           <>
             <ChatList messages={messages} />
-            <ChatScrollAnchor trackVisibility={isLoading} />
+            {/* <ChatScrollAnchor trackVisibility={isLoading} /> */}
           </>
         ) : (
-          <EmptyScreen setInput={setInput} />
+          <></>
+          // <EmptyScreen setInput={setInput} />
         )}
       </div>
       <ChatPanel
         id={id}
-        isLoading={isLoading}
-        stop={stop}
-        append={append}
-        reload={reload}
-        messages={messages}
         input={input}
         setInput={setInput}
+        isAtBottom={isAtBottom}
+        scrollToBottom={scrollToBottom}
       />
     </div>
   )

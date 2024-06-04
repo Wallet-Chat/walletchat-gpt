@@ -1,42 +1,34 @@
-import { UseChatHelpers } from 'ai/react'
-import Image from 'next/image'
-import { assets } from '@/assets/assets';
-import './Main/Main.css'
+import { ExternalLink } from '@/components/external-link'
 
-const prompts = [
-  {
-      id: 1,
-      prompt: "Give the wallet address for crypto-kevin.eth?",
-      icon: assets.compass_icon
-  },
-  {
-      id: 2,
-      prompt: "What is the token overlap for PEPE on Ethereum?",
-      icon: assets.bulb_icon
-  },
-  {
-      id: 3,
-      prompt: "Use etherscan to call the function owner() on the Bored Ape YC smart contract, use proxy module and eth_call action",
-      icon: assets.message_icon
-  },
-  {
-      id: 4,
-      prompt: 'get the portfolio for SOL wallet 8jnC8Zt9fpzUXUQQc12o1pwnJDZkixzLgWSPVJKpXEsK',
-      icon: assets.code_icon
-  },
-]
-
-export function EmptyScreen({ setInput }: Pick<UseChatHelpers, 'setInput'>) {
+export function EmptyScreen() {
   return (
-    <>
-      <div className="cards mt-40 hidden md:flex">
-          {prompts?.map((item) => (
-              <div className="card" onClick={() => setInput(item.prompt)} key={item.id}>
-                  <p>{`${item.prompt.slice(0, 50)}...`}</p>
-                  <Image src={item.icon} alt="" />
-              </div>
-          ))}
+    <div className="mx-auto max-w-2xl px-4">
+      <div className="flex flex-col gap-2 rounded-lg border bg-background p-8">
+        <h1 className="text-lg font-semibold">
+          Welcome to Next.js AI Chatbot!
+        </h1>
+        <p className="leading-normal text-muted-foreground">
+          This is an open source AI chatbot app template built with{' '}
+          <ExternalLink href="https://nextjs.org">Next.js</ExternalLink>, the{' '}
+          <ExternalLink href="https://sdk.vercel.ai">
+            Vercel AI SDK
+          </ExternalLink>
+          , and{' '}
+          <ExternalLink href="https://vercel.com/storage/kv">
+            Vercel KV
+          </ExternalLink>
+          .
+        </p>
+        <p className="leading-normal text-muted-foreground">
+          It uses{' '}
+          <ExternalLink href="https://vercel.com/blog/ai-sdk-3-generative-ui">
+            React Server Components
+          </ExternalLink>{' '}
+          to combine text with generative UI as output of the LLM. The UI state
+          is synced through the SDK so the model is aware of your interactions
+          as they happen.
+        </p>
       </div>
-    </>
+    </div>
   )
 }

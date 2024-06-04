@@ -10,21 +10,28 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip'
 import { useEnterSubmit } from '@/lib/hooks/use-enter-submit'
+import { useActions, useUIState } from 'ai/rsc'
+import { AI } from '@/lib/chat/actions'
+import { UserMessage } from './stocks/message'
+import { nanoid } from 'nanoid'
 
-export interface PromptProps
-  extends Pick<UseChatHelpers, 'input' | 'setInput'> {
-  onSubmit: (value: string) => Promise<void>
-  isLoading: boolean
+export interface PromptProps {
+  input: string
+  // onSubmit: (value: string) => Promise<void>
+  // isLoading: boolean
+  setInput: (value: string) => void
 }
 
 export function PromptForm({
-  onSubmit,
+  // onSubmit,
   input,
   setInput,
-  isLoading
+  // isLoading
 }: PromptProps) {
   const { formRef, onKeyDown } = useEnterSubmit()
   const inputRef = React.useRef<HTMLTextAreaElement>(null)
+  const { submitUserMessage } = useActions()
+  const [_, setMessages] = useUIState<typeof AI>()
 
   React.useEffect(() => {
     if (inputRef.current) {
@@ -34,15 +41,32 @@ export function PromptForm({
 
   return (
     <form
-      onSubmit={async e => {
-        e.preventDefault()
-        if (!input?.trim()) {
-          return
-        }
-        setInput('')
-        await onSubmit(input)
-      }}
       ref={formRef}
+      onSubmit={async (e: any) => {
+        e.preventDefault()
+
+        // Blur focus on mobile
+        if (window.innerWidth < 600) {
+          e.target['message']?.blur()
+        }
+
+        const value = input.trim()
+        setInput('')
+        if (!value) return
+
+        // Optimistically add user message UI
+        setMessages(currentMessages => [
+          ...currentMessages,
+          {
+            id: nanoid(),
+            display: <UserMessage>{value}</UserMessage>
+          }
+        ])
+
+        // Submit and get response message
+        const responseMessage = await submitUserMessage(value)
+        setMessages(currentMessages => [...currentMessages, responseMessage])
+      }}
     >
       <div className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background pr-8 sm:rounded-md sm:border sm:pr-12">
         <Textarea
@@ -59,11 +83,7 @@ export function PromptForm({
         <div className="absolute right-0 top-4 sm:right-4">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                type="submit"
-                size="icon"
-                disabled={isLoading || input === ''}
-              >
+              <Button type="submit" size="icon" disabled={input === ''}>
                 <IconArrowElbow />
                 <span className="sr-only">Send message</span>
               </Button>

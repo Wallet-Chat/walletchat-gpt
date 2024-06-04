@@ -73,9 +73,9 @@ function Header() {
 
   return (
     <div>
-      {!isConnected && (
+      {/* {!isConnected && (
         <Alert />
-      )}
+      )} */}
       <div className="header">
         <a href="/">
           <h1 className="header-text">
