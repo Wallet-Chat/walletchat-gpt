@@ -1,16 +1,19 @@
 "use client"
 import runChat from "@/config/openai";
 import { createContext, useState } from "react";
+import { nanoid } from 'nanoid'
 
 export const Context = createContext<any>({} as any);
 
 interface ChatLog {
+    id: string;
     prompt: string;
     resultData?: string;
     loading: boolean
 }
 
 const ContextProvider = (props: any) => {
+    const id = nanoid();
     const [input, setInput] = useState<string>("");
     const [chatLog, setChatLog] = useState<ChatLog[]>([]);
     const [recentPrompt, setRecentPrompt] = useState<string>("");
@@ -37,7 +40,7 @@ const ContextProvider = (props: any) => {
         let response: any;
         if(prompt !== undefined) {
             setPrevPromts(prev=>[...prev, prompt]);
-            setChatLog([...chatLog, { prompt: prompt, loading: true }]);
+            setChatLog([...chatLog, { id: id, prompt: prompt, loading: true }]);
             setRecentPrompt(prompt);
             response = await runChat(prompt)
             let responseArray = response.split("**");
@@ -58,7 +61,7 @@ const ContextProvider = (props: any) => {
         } else {
             setPrevPromts(prev=>[...prev, input]);
             setRecentPrompt(input);
-            setChatLog([...chatLog, { prompt: input, loading: true }]);
+            setChatLog([...chatLog, {id: id, prompt: input, loading: true }]);
             response = await runChat(input)
             let responseArray = response.split("**");
             let newResponse = '';

@@ -4,16 +4,13 @@ import  "./Sidebar.css"
 import { assets } from '../../assets/assets'
 import { Context } from '../../context/Context';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const Sidebar = () => {
     const [extended, setExtented] = useState<boolean>(true);
-    const {onSent, prevPrompts, setRecentPrompt, newChat} = useContext(Context);
+    const { newChat, chatLog } = useContext(Context);
 
-    const loadPrompt = async (prompt: string) => {
-        setRecentPrompt(prompt)
-       await onSent(prompt);
-    } 
-
+    console.log(chatLog)
   return (
     <div className='sidebar'>
         <div className="top">
@@ -27,12 +24,14 @@ const Sidebar = () => {
                     <p className="recent-title">
                         Recent
                     </p>
-                    {prevPrompts.map((item: string, index: number) => {
+                    {chatLog.map((item: any, index: number) => {
                         return (
-                            <div onClick={() => loadPrompt(item)} key={index} className="recent-entry">
-                                <Image src={assets.message_icon} alt="" />
-                                <p>{item.slice(0, 18)} ...</p>
-                            </div>
+                            <Link href={`/chat/${item?.id}`}>
+                                <div key={index} className="recent-entry">
+                                    <Image src={assets.message_icon} alt="" />
+                                    <p>{item?.prompt.slice(0, 18)} ...</p>
+                                </div>
+                            </Link>
                         )
                     })}
                 </div>

@@ -1,11 +1,12 @@
 "use client"
-import { KeyboardEvent, useContext } from 'react';
+import { useContext } from 'react';
 import "./Main.css"
 import Image from 'next/image';
 import { Context } from '@/context/Context';
 import { assets } from '@/assets/assets';
 import Header from '../Common/Header';
 import ChatMessage from '../ChatMessage/ChatMessage';
+import Form from '../Form/Form';
 
 const prompts = [
     {
@@ -31,14 +32,7 @@ const prompts = [
 ]
 
 const Main = () => {
-    const {onSent, chatLog, setRecentPrompt, showResult, setInput, input} = useContext(Context);
-
-    const handleKeyDown = async (e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            setInput("")
-            await onSent();
-        }
-    };
+    const {onSent, chatLog, setRecentPrompt, showResult, setInput } = useContext(Context);
 
     const selectPrompt = async (prompt: string) => {
         setRecentPrompt(prompt);
@@ -54,7 +48,6 @@ const Main = () => {
                 ? 
                 <>
                     <div className="greet">
-                        {/* <p><span>Hello, Kevin.</span></p> */}
                         <p><span>How can I help you today?</span></p>
                     </div>
                     <div className="cards">
@@ -74,24 +67,7 @@ const Main = () => {
                 </>
             }
             
-            <div className="main-bottom">
-                <div className="search-box">
-                    <input 
-                        onChange={(e) => setInput(e.target.value)} 
-                        value={input} type="text" 
-                        placeholder='Enter a prompt here' 
-                        onKeyDown={(e) => handleKeyDown(e)}
-                    />
-                    <div>
-                        <Image src={assets.gallery_icon} alt="" />
-                        <Image src={assets.mic_icon} alt="" />
-                        {input ? <Image onClick={() => onSent()} src={assets.send_icon} alt="" /> : null}
-                    </div>
-                </div>
-                <p className="bottom-info">
-                    WalletChat AI may display inaccurate info, including about people, so double-check its responses. Your privacy and WalletChat Apps.
-                </p>
-            </div>
+            <Form />
         </div>
     </div>
   )

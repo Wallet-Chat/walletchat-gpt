@@ -867,7 +867,7 @@ async function submitToolOutputs(threadId: string, runId: string, tool_outputs: 
         );
     
         console.log("run in submit tool output", run);
-    
+
         return new NextResponse(JSON.stringify({ run: run, success: true }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
