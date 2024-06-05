@@ -434,6 +434,23 @@ const functions: ChatCompletionTool[] = [
             }
         }
     },
+    {
+        type: "function",
+        function: {
+            "name": "fetchCryptoNews",
+            "description": "Fetches crypto news for a specific coin using the Crypto News API.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "coin": {
+                        "type": "string",
+                        "description": "The ticker symbol of the cryptocurrency to fetch news for."
+                    }
+                },
+                "required": ["coin"]
+            }
+        }
+    }
 ];
 
 let threadId: string;  // Store the thread ID
@@ -560,6 +577,9 @@ async function executeFunction(functionName: string, args: string, recursionDept
             break;
         case "getWalletNetWorthEthereum":
             result = await getWalletNetWorth(parsedArgs);
+            break;
+        case "fetchCryptoNews":
+            result = await fetchCryptoNews(parsedArgs.coin);
             break;
         default:
             throw new Error(`Unknown function: ${functionName}`);
@@ -990,6 +1010,23 @@ interface GetWalletNetWorthParams {
     exclude_spam?: boolean;
     exclude_unverified_contracts?: boolean;
 }
+
+const fetchCryptoNews = async (coin: string): Promise<any> => {
+    const url = `https://cryptonews-api.com/api/v1?tickers=${coin}&items=3&token=${process.env.CRYPTO_NEWS_API_KEY}`;
+
+    try {
+        const response = await axios.get(url);
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            console.error('Error fetching crypto news:', error.response?.data?.message || error.message);
+            throw new Error(error.response?.data?.message || 'Error fetching crypto news');
+        } else {
+            console.error('Unexpected error:', error);
+            throw new Error('An unexpected error occurred');
+        }
+    }
+};
 
 async function fetchNFTData(params: FetchNFTDataParams): Promise<any> {
     const { address, chain, limit, exclude_spam, format, token_addresses, media_items } = params;
