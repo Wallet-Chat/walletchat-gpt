@@ -10,7 +10,6 @@ const Sidebar = () => {
     const [extended, setExtented] = useState<boolean>(true);
     const { newChat, chatLog } = useContext(Context);
 
-    console.log(chatLog)
   return (
     <div className='sidebar'>
         <div className="top">
