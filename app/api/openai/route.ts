@@ -273,8 +273,8 @@ const functions: ChatCompletionTool[] = [
     {
         type: "function",
         function: {
-            name: "fetchNFTData",
-            description: "Fetches NFT data for a specific address using the Moralis API.",
+            name: "fetchNFTDataEthereum",
+            description: "Fetches NFT data for a specific on address Ethereum, Base, Polygon (EVM compatible chains) using the Moralis API.",
             parameters: {
                 type: "object",
                 properties: {
@@ -321,8 +321,8 @@ const functions: ChatCompletionTool[] = [
     {
         type: "function",
         function: {
-            name: "fetchERC20TokenOwners",
-            description: "Fetches the owners of a specific ERC-20 token using the Moralis API.",
+            name: "fetchERC20TokenOwnersEthereum",
+            description: "Fetches the owners of a specific ERC-20 Ethereum, Base, Polygon (EVM compatible chains) token using the Moralis API.",
             parameters: {
                 type: "object",
                 properties: {
@@ -355,8 +355,8 @@ const functions: ChatCompletionTool[] = [
     {
         type: "function",
         function: {
-            name: "getWalletStats",
-            description: "Get statistics for a specific wallet using the Moralis API.",
+            name: "getWalletStatsEthereum",
+            description: "Get statistics for a specific wallet on Ethereum, Base, Polygon (EVM compatible chaines) using the Moralis API.",
             parameters: {
                 type: "object",
                 properties: {
@@ -379,8 +379,8 @@ const functions: ChatCompletionTool[] = [
     {
         type: "function",
         function: {
-            name: "fetchERC20Data",
-            description: "Fetches ERC-20 token data for a specific address using the Moralis API.",
+            name: "fetchERC20DataEthereum",
+            description: "Fetches ERC-20 token data for a specific address on Ethereum, Base, Polygon (EVM compatible chains) using the Moralis API.",
             parameters: {
                 type: "object",
                 properties: {
@@ -403,8 +403,8 @@ const functions: ChatCompletionTool[] = [
     {
         type: "function",
         function: {
-            name: "getWalletNetWorth",
-            description: "Get the net worth of a specific wallet using the Moralis API.",
+            name: "getWalletNetWorthEthereum",
+            description: "Get the net worth of a specific wallet for Ethereum, Base, Polygon (EVM compatible chains) using the Moralis API.",
             parameters: {
                 type: "object",
                 properties: {
@@ -540,19 +540,19 @@ async function executeFunction(functionName: string, args: string, recursionDept
             result = await getSolanaAccountNFTs(parsedArgs.accountId);
             break;
         //Moralis functions (EVM)
-        case "fetchNFTData":
+        case "fetchNFTDataEthereum":
             result = await fetchNFTData(parsedArgs);
             break;
-        case "fetchERC20TokenOwners":
+        case "fetchERC20TokenOwnersEthereum":
             result = await fetchERC20TokenOwners(parsedArgs);
             break;
-        case "getWalletStats":
+        case "getWalletStatsEthereum":
             result = await getWalletStats(parsedArgs);
             break;
-        case "fetchERC20Data":
+        case "fetchERC20DataEthereum":
             result = await fetchERC20Data(parsedArgs);
             break;
-        case "getWalletNetWorth":
+        case "getWalletNetWorthEthereum":
             result = await getWalletNetWorth(parsedArgs);
             break;
         default:
