@@ -394,9 +394,14 @@ const functions: ChatCompletionTool[] = [
                         description: "The blockchain network of the wallet",
                         enum: ["0x1", "bsc", "polygon", "base", "arbitrum", "optimism", "chiliz", "gnosis"],
                         required: true
+                    },
+                    exclude_spam: {
+                        type: "string",
+                        description: "Flag to exclude spam",
+                        enum: ["true"]
                     }
                 },
-                required: ["address", "chain"]
+                required: ["address", "chain", "exclude_spam"]
             }
         }
     },
