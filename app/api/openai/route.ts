@@ -269,7 +269,165 @@ const functions: ChatCompletionTool[] = [
                 required: ["accountId"]
             }
         }
-    }
+    },
+    {
+        type: "function",
+        function: {
+            name: "fetchNFTData",
+            description: "Fetches NFT data for a specific address using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    address: {
+                        type: "string",
+                        description: "The address to fetch NFT data for",
+                        required: true
+                    },
+                    chain: {
+                        type: "string",
+                        description: "The blockchain to fetch NFT data from (e.g., eth)",
+                        required: true
+                    },
+                    limit: {
+                        type: "string",
+                        description: "The limit for the number of results",
+                        enum: ["5"],
+                        required: true
+                    },
+                    exclude_spam: {
+                        type: "string",
+                        description: "Flag to exclude spam",
+                        enum: ["true"],
+                        required: true
+                    },
+                    format: {
+                        type: "string",
+                        description: "The format of the returned data (e.g., decimal)"
+                    },
+                    token_addresses: {
+                        type: "string",
+                        description: "The specific NFT contract token address if filtering results based on individual NFTs",
+                        required: false
+                    },
+                    media_items: {
+                        type: "boolean",
+                        description: "Flag to include or exclude media items in the response"
+                    }
+                },
+                required: ["address", "chain", "limit", "exclude_spam"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "fetchERC20TokenOwners",
+            description: "Fetches the owners of a specific ERC-20 token using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    contractAddress: {
+                        type: "string",
+                        description: "The contract address of the ERC-20 token",
+                        required: true
+                    },
+                    chain: {
+                        type: "string",
+                        description: "The blockchain to fetch data from (e.g., eth)",
+                        required: true
+                    },
+                    order: {
+                        type: "string",
+                        description: "Order of owners based on the amount of tokens they hold",
+                        enum: ["ASC", "DESC"],
+                        required: false
+                    },
+                    cursor: {
+                        type: "string",
+                        description: "Cursor value for pagination",
+                        required: false
+                    }
+                },
+                required: ["contractAddress", "chain"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "getWalletStats",
+            description: "Get statistics for a specific wallet using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    walletAddress: {
+                        type: "string",
+                        description: "The wallet address to retrieve the statistics for.",
+                        required: true
+                    },
+                    chain: {
+                        type: "string",
+                        description: "The blockchain network of the wallet",
+                        enum: ["0x1", "bsc", "polygon", "base", "arbitrum", "optimism", "chiliz", "gnosis"],
+                        required: true
+                    }
+                },
+                required: ["walletAddress", "chain"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "fetchERC20Data",
+            description: "Fetches ERC-20 token data for a specific address using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    address: {
+                        type: "string",
+                        description: "The wallet address to fetch ERC-20 token data for.",
+                        required: true
+                    },
+                    chain: {
+                        type: "string",
+                        description: "The blockchain network of the wallet",
+                        enum: ["0x1", "bsc", "polygon", "base", "arbitrum", "optimism", "chiliz", "gnosis"],
+                        required: true
+                    }
+                },
+                required: ["address", "chain"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "getWalletNetWorth",
+            description: "Get the net worth of a specific wallet using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    walletAddress: {
+                        type: "string",
+                        description: "The wallet address to retrieve the net worth for.",
+                        required: true
+                    },
+                    exclude_spam: {
+                        type: "boolean",
+                        description: "Option to exclude spam from the net worth calculation.",
+                        required: false
+                    },
+                    exclude_unverified_contracts: {
+                        type: "boolean",
+                        description: "Option to exclude unverified contracts from the net worth calculation.",
+                        required: false
+                    }
+                },
+                required: ["walletAddress"]
+            }
+        }
+    },
 ];
 
 let threadId: string;  // Store the thread ID
@@ -380,6 +538,22 @@ async function executeFunction(functionName: string, args: string, recursionDept
             break;
         case "getSolanaAccountNFTs":
             result = await getSolanaAccountNFTs(parsedArgs.accountId);
+            break;
+        //Moralis functions (EVM)
+        case "fetchNFTData":
+            result = await fetchNFTData(parsedArgs);
+            break;
+        case "fetchERC20TokenOwners":
+            result = await fetchERC20TokenOwners(parsedArgs);
+            break;
+        case "getWalletStats":
+            result = await getWalletStats(parsedArgs);
+            break;
+        case "fetchERC20Data":
+            result = await fetchERC20Data(parsedArgs);
+            break;
+        case "getWalletNetWorth":
+            result = await getWalletNetWorth(parsedArgs);
             break;
         default:
             throw new Error(`Unknown function: ${functionName}`);
@@ -777,7 +951,131 @@ interface ApiResponse<T> {
     tokens?: T[];
     nfts?: T[];
 }
+interface FetchNFTDataParams {
+    address: string;
+    chain: string;
+    limit: string;
+    exclude_spam: string;
+    format?: string;
+    token_addresses?: string;
+    media_items?: boolean;
+}
 
+interface FetchERC20TokenOwnersParams {
+    contractAddress: string;
+    chain: string;
+    order?: "ASC" | "DESC";
+    cursor?: string;
+}
+
+interface GetWalletStatsParams {
+    walletAddress: string;
+    chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis";
+}
+
+interface FetchERC20DataParams {
+    address: string;
+    chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis";
+}
+
+interface GetWalletNetWorthParams {
+    walletAddress: string;
+    exclude_spam?: boolean;
+    exclude_unverified_contracts?: boolean;
+}
+
+async function fetchNFTData(params: FetchNFTDataParams): Promise<any> {
+    const { address, chain, limit, exclude_spam, format, token_addresses, media_items } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/${address}/nft`;
+    const queryParams = {
+        chain,
+        limit,
+        exclude_spam,
+        format,
+        token_addresses,
+        media_items
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch NFT data:", error);
+        throw error;
+    }
+}
+
+async function fetchERC20TokenOwners(params: FetchERC20TokenOwnersParams): Promise<any> {
+    const { contractAddress, chain, order, cursor } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/erc20/${contractAddress}/owners`;
+    const queryParams = {
+        chain,
+        order,
+        cursor
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch ERC-20 token owners:", error);
+        throw error;
+    }
+}
+
+async function getWalletStats(params: GetWalletStatsParams): Promise<any> {
+    const { walletAddress, chain } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/stats`;
+    const queryParams = {
+        chain
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch wallet stats:", error);
+        throw error;
+    }
+}
+
+async function fetchERC20Data(params: FetchERC20DataParams): Promise<any> {
+    const { address, chain } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20`;
+    const queryParams = {
+        chain
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch ERC-20 data:", error);
+        throw error;
+    }
+}
+
+async function getWalletNetWorth(params: GetWalletNetWorthParams): Promise<any> {
+    const { walletAddress, exclude_spam, exclude_unverified_contracts } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/net-worth`;
+    const queryParams = {
+        exclude_spam,
+        exclude_unverified_contracts
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch wallet net worth:", error);
+        throw error;
+    }
+}
 
 async function getSolanaAccountNFTs(accountId: string): Promise<ApiResponse<SolanaNFT>> {
     const url = `https://solana-gateway.moralis.io/account/mainnet/${accountId}/nft`;
