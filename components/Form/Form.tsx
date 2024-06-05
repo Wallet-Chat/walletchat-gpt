@@ -5,6 +5,7 @@ import { Context } from '@/context/Context'
 import Image from 'next/image'
 import React, { KeyboardEvent, useContext } from 'react'
 import './Form.css'
+import Link from 'next/link'
 
 const Form = () => {
     const {onSent, setInput, input} = useContext(Context);
@@ -31,7 +32,7 @@ const Form = () => {
             </div>
         </div>
         <p className="bottom-info">
-            WalletChat AI may display inaccurate info, including about people, so double-check its responses. Your privacy and WalletChat Apps.
+            Conversational Blockchain Explorer and Token Analysis - contact <a href='https://x.com/wallet_chat?s=11' className='hover:underline' target='_blank'>@wallet_chat</a>  with feedback
         </p>
     </div>
   )

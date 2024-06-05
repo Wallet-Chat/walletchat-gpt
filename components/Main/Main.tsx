@@ -66,7 +66,6 @@ const Main = () => {
                     ))}
                 </>
             }
-            
             <Form />
         </div>
     </div>
