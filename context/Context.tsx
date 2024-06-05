@@ -49,7 +49,7 @@ const ContextProvider = (props: any) => {
                     newResponse += "<b>"+responseArray[i]+"</b>"
                 }
             }
-            let newResponse2 = response.replace(/\\n/g, "<br>");
+            let newResponse2 = newResponse.replace(/\\n/g, "<br>");
             setChatLog(prevChatLog =>
                 prevChatLog.map(chat =>
                     chat.prompt === prompt ? { ...chat, resultData: newResponse2, loading: false } : chat
@@ -69,7 +69,7 @@ const ContextProvider = (props: any) => {
                     newResponse += "<b>"+responseArray[i]+"</b>"
                 }
             }
-            let newResponse2 = response.replace(/\\n/g, "<br>");
+            let newResponse2 = newResponse.replace(/\\n/g, "<br>");
             setChatLog(prevChatLog =>
                 prevChatLog.map(chat =>
                     chat.prompt === input ? { ...chat, resultData: newResponse2, loading: false } : chat
