@@ -398,7 +398,8 @@ const functions: ChatCompletionTool[] = [
                     exclude_spam: {
                         type: "string",
                         description: "Flag to exclude spam",
-                        enum: ["true"]
+                        enum: ["true"],
+                        default: "true"
                     }
                 },
                 required: ["address", "chain", "exclude_spam"]
@@ -981,6 +982,7 @@ interface GetWalletStatsParams {
 interface FetchERC20DataParams {
     address: string;
     chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis";
+    exclude_spam: "true" | "false"
 }
 
 interface GetWalletNetWorthParams {
@@ -1048,10 +1050,11 @@ async function getWalletStats(params: GetWalletStatsParams): Promise<any> {
 }
 
 async function fetchERC20Data(params: FetchERC20DataParams): Promise<any> {
-    const { address, chain } = params;
+    const { address, chain, exclude_spam } = params;
     const url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20`;
     const queryParams = {
-        chain
+        chain,
+        exclude_spam
     };
     const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
 
