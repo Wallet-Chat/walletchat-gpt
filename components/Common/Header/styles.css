@@ -5,12 +5,13 @@
     padding: 1.5rem 3rem;
     position: sticky;
     top: 0;
-    background-color: var(--black);
+    background-color: var(--white);
     z-index: 1000;
   }
 
   .header-text {
     cursor: pointer;
+    color: black;
   }
   
   .header h1 {

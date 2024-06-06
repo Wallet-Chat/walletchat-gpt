@@ -1,12 +1,19 @@
+"use client"
 import React, { useContext } from 'react'
 import ChatMessage from '../ChatMessage/ChatMessage'
 import { Context } from '@/context/Context';
 import Header from '../Common/Header';
 import Form from '../Form/Form';
+import { useRouter } from 'next/navigation';
 
 const Chat = ({ id } : { id: string }) => {
-    const { chatLog } = useContext(Context);
-    const result = chatLog.find((item: any) => item.id === id);
+  const router = useRouter();
+  const { chatLog } = useContext(Context);
+  const result = chatLog?.find((item: any) => item.id === id);
+
+  if(result === undefined) {
+    router.replace("/")
+  }
 
   return (
     <div className="main">

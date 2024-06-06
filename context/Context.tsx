@@ -2,6 +2,7 @@
 import runChat from "@/config/openai";
 import { createContext, useState } from "react";
 import { nanoid } from 'nanoid'
+import { useRouter } from "next/navigation";
 
 export const Context = createContext<any>({} as any);
 
@@ -13,6 +14,7 @@ interface ChatLog {
 }
 
 const ContextProvider = (props: any) => {
+    const router = useRouter();
     const id = nanoid();
     const [input, setInput] = useState<string>("");
     const [chatLog, setChatLog] = useState<ChatLog[]>([]);
@@ -29,6 +31,7 @@ const ContextProvider = (props: any) => {
     }
 
     const newChat = () => {
+        router.push("/");
         setLoading(false);
         setShowResult(false);
     }

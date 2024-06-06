@@ -5,7 +5,6 @@ import { Context } from '@/context/Context'
 import Image from 'next/image'
 import React, { KeyboardEvent, useContext } from 'react'
 import './Form.css'
-import Link from 'next/link'
 
 const Form = () => {
     const {onSent, setInput, input} = useContext(Context);
@@ -31,9 +30,9 @@ const Form = () => {
                 {input ? <Image onClick={() => onSent()} src={assets.send_icon} alt="" /> : null}
             </div>
         </div>
-        <p className="bottom-info">
-            Conversational Blockchain Explorer and Token Analysis - contact <a href='https://x.com/wallet_chat?s=11' className='hover:underline' target='_blank'>@wallet_chat</a>  with feedback
-        </p>
+        <div className="bottom-info">
+            Conversational Blockchain Explorer and Token Analysis - contact @wallet_chat with feedback
+        </div>
     </div>
   )
 }

@@ -26,8 +26,11 @@
     background-color: #e6eaf1;
     border-radius: 50px;
     font-size: 14px;
-    color: gray;
     cursor: pointer;
+}
+
+.sidebar .new-chat p {
+    color: #585858;
 }
 
 .sidebar .recent {
@@ -39,6 +42,7 @@
 .sidebar .recent-title {
     margin-top: 30px;
     margin-bottom: 20px;
+    color: #585858
 }
 
 .sidebar .recent-entry {
@@ -48,8 +52,11 @@
     padding: 10px;
     padding-right: 40px;
     border-radius: 50px;
-    color: #282828;
     cursor: pointer;
+}
+
+.sidebar .recent-entry p {
+    color: #585858;
 }
 
 .sidebar .recent-entry:hover {

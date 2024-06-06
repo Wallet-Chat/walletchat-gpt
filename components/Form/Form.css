@@ -7,6 +7,21 @@
     /* margin: auto; */
 }
 
+.bottom-info {
+    font-size: 13px;
+    margin: 15px auto;
+    text-align: center;
+    color: #585858;
+    font-weight: 300;
+}
+/* .bottom-info a {
+    color: #000000;
+    font-weight: 300;
+    font-size: 13px;
+    margin: 15px auto;
+    text-align: center;
+} */
+
 .search-box {
     display: flex;
     align-items: center;
