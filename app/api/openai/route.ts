@@ -472,6 +472,23 @@ const functions: ChatCompletionTool[] = [
             },
             "description": "Fetches transactions for a specific Solana account using the Solana Beach API."
         }        
+    },
+    {
+        type: "function",
+        function: {
+            "name": "fetchSolanaTransactionInfo",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "signature": {
+                        "type": "string",
+                        "description": "The signature or hash the solana transaction to gather data for"
+                    }
+                },
+                "required": ["signature"]
+            },
+            "description": "Fetches transaction info for a specific Solana transaction using the Solana Beach API."
+        }        
     }
 ];
 
@@ -605,6 +622,9 @@ async function executeFunction(functionName: string, args: string, recursionDept
             break;
         case "fetchSolanaTransactions":
             result = await fetchSolanaTransactions(parsedArgs);
+            break;
+        case "fetchSolanaTransactionInfo":
+            result = await fetchSolanaTransactionInfo(parsedArgs.signature);
             break;
         default:
             throw new Error(`Unknown function: ${functionName}`);
@@ -1202,6 +1222,22 @@ async function fetchSolanaTransactions(params: FetchTransactionsParams): Promise
         const response = await axios.get(url, { 
             headers, 
             params: limit ? { limit } : {} 
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+        throw error;
+    }
+}
+async function fetchSolanaTransactionInfo(singatureHash: string): Promise<any> {
+    const url = `https://api.solanabeach.io/v1/transaction/${singatureHash}`;
+    const headers = { 
+        'Accept': 'application/json', 
+        'Authorization': process.env.SOLANA_BEACH_API_KEY as string 
+    };
+    try {
+        const response = await axios.get(url, { 
+            headers
         });
         return response.data;
     } catch (error) {
