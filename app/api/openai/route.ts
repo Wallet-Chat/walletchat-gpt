@@ -469,7 +469,6 @@ const initializeAssistant = async () => {
             - For token name to contract address mapping search with Bing and use the token with the largest market cap. For example, when asked (find the token overlap for PEPE) use bing to find the contract address for PEPE. \
             - Never tell me how to search for information myself choose from the functions first, then do a web search if not matched \
             - If you encounter an error please try again until you find a working solution \
-            - API request timeout is 360 seconds \
             - Never use contract module for Etherscan function \
             - for Etherscan function calls (), use proxy module, and eth_call action, take the first 32 bits of the keccak hash of the function and any arguments, for example owner() function comes out to 0x8da5cb5b \
             - If the Dune API is taking multiple tries, continue trying until a result is reached, do not allow for other queries until you have a resolution for the current query. \
