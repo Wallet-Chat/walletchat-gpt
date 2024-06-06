@@ -450,6 +450,28 @@ const functions: ChatCompletionTool[] = [
                 "required": ["coin"]
             }
         }
+    },
+    {
+        type: "function",
+        function: {
+            "name": "fetchSolanaTransactions",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pubkey": {
+                        "type": "string",
+                        "description": "The public key of the account to fetch transactions for."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "The limit for the number of transactions to fetch.",
+                        "default": 3
+                    }
+                },
+                "required": ["pubkey"]
+            },
+            "description": "Fetches transactions for a specific Solana account using the Solana Beach API."
+        }        
     }
 ];
 
@@ -580,6 +602,9 @@ async function executeFunction(functionName: string, args: string, recursionDept
             break;
         case "fetchCryptoNews":
             result = await fetchCryptoNews(parsedArgs.coin);
+            break;
+        case "fetchSolanaTransactions":
+            result = await fetchSolanaTransactions(parsedArgs);
             break;
         default:
             throw new Error(`Unknown function: ${functionName}`);
@@ -1162,6 +1187,28 @@ async function getSolanaAccountPortfolio(accountId: string): Promise<ApiResponse
     }
 }
 
+interface FetchTransactionsParams {
+    pubkey: string;
+    limit?: number;
+}
+async function fetchSolanaTransactions(params: FetchTransactionsParams): Promise<any> {
+    const { pubkey, limit } = params;
+    const url = `https://api.solanabeach.io/v1/account/${pubkey}/transactions`;
+    const headers = { 
+        'Accept': 'application/json', 
+        'Authorization': process.env.SOLANA_BEACH_API_KEY as string 
+    };
+    try {
+        const response = await axios.get(url, { 
+            headers, 
+            params: limit ? { limit } : {} 
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+        throw error;
+    }
+}
 interface CryptoPriceParams {
     symbol: string;
 }
