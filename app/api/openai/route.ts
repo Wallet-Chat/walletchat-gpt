@@ -229,6 +229,23 @@ const functions: ChatCompletionTool[] = [
                 properties: {
                     accountId: {
                         type: "string",
+                        description: "The Solana account ID to query for overall portfolio value"
+                    }
+                },
+                required: ["accountId"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "getSolanaAccountTokens",
+            description: "Retrieve helds by a Solana account from the Moralis Solana Gateway",
+            parameters: {
+                type: "object",
+                properties: {
+                    accountId: {
+                        type: "string",
                         description: "The Solana account ID to query for tokens"
                     }
                 },
@@ -594,6 +611,10 @@ async function executeFunction(functionName: string, args: string, recursionDept
             console.log("Get Solana Portfolio for: ", parsedArgs)
             const portfolioData = await getSolanaAccountPortfolio(parsedArgs.accountId);
             result = formatSolanaPortfolio(portfolioData);
+            break;
+        case "getSolanaAccountTokens":
+            console.log("Get Solana Tokens for: ", parsedArgs)
+            result = await getSolanaAccountTokens(parsedArgs.accountId);
             break;
         case "getSolanaTokenPrice":
             result = await getSolanaTokenPrice(parsedArgs.tokenId);
@@ -1199,6 +1220,20 @@ async function getSolanaAccountPortfolio(accountId: string): Promise<ApiResponse
 
     try {
         console.log("get Solana portfolio (nfts, native and token balance) for: ", accountId)
+        const response = await axios.get<ApiResponse<SolanaToken>>(url, { headers });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch Solana account tokens:", error);
+        throw error;
+    }
+}
+
+async function getSolanaAccountTokens(accountId: string): Promise<ApiResponse<SolanaToken>> {
+    const url = `https://solana-gateway.moralis.io/account/mainnet/${accountId}/tokens`;
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY };
+
+    try {
+        console.log("get Solana tokens by address for: ", accountId)
         const response = await axios.get<ApiResponse<SolanaToken>>(url, { headers });
         return response.data;
     } catch (error) {
