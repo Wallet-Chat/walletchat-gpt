@@ -99,7 +99,7 @@ body {
   font-family: "Inter", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--black);
+  background-color: var(--white);
 
   overflow-x: hidden;
 }
@@ -112,7 +112,7 @@ h5,
 h6,
 p,
 span {
-  color: var(--white);
+  /* color: var(--white); */
 }
 
 ::selection {
@@ -141,8 +141,8 @@ img {
 }
 
 a {
-  text-decoration: none;
-  color: var(--white) !important;
+  /* text-decoration: none; */
+  /* color: var(--white) !important; */
 }
 
 /* .cursor {

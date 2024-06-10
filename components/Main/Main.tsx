@@ -10,11 +10,11 @@ const Main = () => {
   return (
     <div className='main'>
         <Header />
-        <div className="main-container">
-            <div className="main-bottom">
+        {/* <div className="main-container"> */}
+            {/* <div className="main-bottom"> */}
                 <Chat id={id} />
-            </div>
-        </div>
+            {/* </div> */}
+        {/* </div> */}
     </div>
   )
 }

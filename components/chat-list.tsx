@@ -29,7 +29,7 @@ export function ChatList({ messages }: ChatList) {
               <p className="text-muted-foreground leading-normal">
                 Please{' '}
                 <Link href="/" className="underline">
-                  connect your wallet
+                  connect your wallet {' '}
                 </Link>
                 to save and revisit your chat history!
               </p>

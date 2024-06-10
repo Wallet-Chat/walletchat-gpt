@@ -15,6 +15,10 @@
     gap: 20px;
 }
 
+.result p {
+    color: #585858;
+}
+
 .result img {
     width: 40px;
     border-radius: 50%;
