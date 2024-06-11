@@ -2,7 +2,6 @@
 
 // import { prisma } from "@/lib/prisma";
 import { PrismaClient } from "@prisma/client";
-import { NextApiRequest, NextApiResponse } from "next";
 import axios from "axios";
 
 const prisma = new PrismaClient();
@@ -12,17 +11,20 @@ interface Chat {
   threadID: string;
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export const POST = async (req: Request, res: Response) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return new Response(JSON.stringify({ message: "Method not allowed" }), {
+      status: 405,
+    });
   }
-  const { conversation, threadId } = req.body;
+  const { conversation, threadId } = await req.json();
+
+  console.log({ conversation, threadId });
 
   if (!conversation || !threadId) {
-    return res.status(400).json({ error: "Missing text or sessionId" });
+    return new Response(JSON.stringify({ message: "Error missing input" }), {
+      status: 400,
+    });
   }
   try {
     const recentMessages = await prisma.conversation.findMany({
@@ -30,15 +32,21 @@ export default async function handler(
       orderBy: { createdAt: "desc" },
       take: 5,
     });
+    console.log(recentMessages);
+
     const prompt =
-      recentMessages.map((m: Chat) => m.conversation || "").join("\n") +
+      recentMessages
+        .map((m: Chat) => JSON.stringify(m.conversation) || "")
+        .join("\n") +
       "\n" +
-      conversation;
+      JSON.stringify(conversation);
 
     const headers = {
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     };
+    console.log(prompt);
+
     const data = {
       model: "gpt-4.0",
       messages: [{ role: "user", content: prompt }],
@@ -47,7 +55,7 @@ export default async function handler(
     const response = await axios.post(
       `${
         process.env.OPENAI_API_ENDPOINT ||
-        "https://api.openai.com/v1/assistants"
+        "https://api.openai.com/v1/chat/completions"
       }`,
       data,
       { headers }
@@ -66,9 +74,12 @@ export default async function handler(
       },
     });
 
-    res.status(200).json({ reply: aiText });
+    return new Response(JSON.stringify({ message: "aiText" }), { status: 200 });
   } catch (error) {
     console.error("Error calling OpenAI:", error);
-    res.status(500).json({ error: "Failed to process your message" });
+    return new Response(
+      JSON.stringify({ error: "Failed to process your message" }),
+      { status: 500 }
+    );
   }
-}
+};
