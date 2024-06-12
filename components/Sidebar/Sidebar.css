@@ -1,10 +1,11 @@
 .sidebar {
-    min-height: 100vh;
+    height: 100vh;
     display: inline-flex;
     flex-direction: column;
     justify-content: space-between;
     background-color: #f0f4f9;
     padding: 25px 15px;
+    width: "80%";
 }
 
 .sidebar img {

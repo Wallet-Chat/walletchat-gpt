@@ -48,6 +48,7 @@ export function Chat({ id, initialMessages, className }: ChatProps) {
           <></>
           // <EmptyScreen setInput={setInput} />
         )}
+        <div className="w-full h-px" ref={visibilityRef} />
       </div>
       <ChatPanel
         id={id}

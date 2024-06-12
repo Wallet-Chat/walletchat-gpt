@@ -8,6 +8,8 @@ import { config } from '@/config/wagmi'
 import { cookieToInitialState } from 'wagmi'
 import { Providers } from '@/components/providers'
 import { AI } from "@/lib/chat/actions";
+import { Header } from "@/components/header";
+// import Header from "@/components/Common/Header";
 
 export const metadata: Metadata = {
   title: "WalletChat AI",
@@ -27,11 +29,10 @@ export default function RootLayout({
       <Web3ModalProvider initialState={initialState}>
         <Providers attribute="class" defaultTheme="system" enableSystem>
           <ContextProvider>
-            <AI>
-              <div className="flex min-h-screen flex-col">
-                <main className="flex flex-1 flex-col bg-muted/50">{children}</main>
-              </div>
-            </AI>
+            <div className="flex min-h-screen flex-col">
+              <Header />
+              <main className="flex flex-1 flex-col bg-muted/50">{children}</main>
+            </div>
           </ContextProvider>
         </Providers>
       </Web3ModalProvider>

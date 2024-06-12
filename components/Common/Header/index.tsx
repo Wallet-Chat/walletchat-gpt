@@ -7,7 +7,6 @@ import Switch from "@mui/material/Switch";
 import { toast } from "react-toastify";
 import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { useAccount, useDisconnect } from 'wagmi'
-import Alert from "../Alert";
 import axios from "axios"; // Ensure axios is installed and imported
  
 function Header() {
@@ -73,9 +72,6 @@ function Header() {
 
   return (
     <div>
-      {/* {!isConnected && (
-        <Alert />
-      )} */}
       <div className="header">
         <a href="/">
           <h1 className="header-text">
