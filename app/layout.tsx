@@ -7,7 +7,6 @@ import Web3ModalProvider from "@/context/Wagmi";
 import { config } from '@/config/wagmi'
 import { cookieToInitialState } from 'wagmi'
 import { Providers } from '@/components/providers'
-import { AI } from "@/lib/chat/actions";
 import { Header } from "@/components/header";
 // import Header from "@/components/Common/Header";
 

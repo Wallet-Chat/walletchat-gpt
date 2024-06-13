@@ -1,9 +1,11 @@
+"use client"
+
 import { UseChatHelpers } from 'ai/react'
 import * as React from 'react'
 import Textarea from 'react-textarea-autosize'
 
 import { Button } from '@/components/ui/button'
-import { IconArrowElbow } from '@/components/ui/icons'
+import { IconArrowElbow, IconPlus } from '@/components/ui/icons'
 import {
   Tooltip,
   TooltipContent,
@@ -14,6 +16,7 @@ import { useActions, useUIState } from 'ai/rsc'
 import { AI } from '@/lib/chat/actions'
 import { UserMessage } from './stocks/message'
 import { nanoid } from 'nanoid'
+import { useRouter } from 'next/navigation'
 
 export interface PromptProps {
   input: string
@@ -28,6 +31,7 @@ export function PromptForm({
   setInput,
   // isLoading
 }: PromptProps) {
+  const router = useRouter()
   const { formRef, onKeyDown } = useEnterSubmit()
   const inputRef = React.useRef<HTMLTextAreaElement>(null)
   const { submitUserMessage } = useActions()
@@ -68,7 +72,23 @@ export function PromptForm({
         setMessages(currentMessages => [...currentMessages, responseMessage])
       }}
     >
-      <div className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background pr-8 sm:rounded-md sm:border sm:pr-12">
+      <div className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background px-8 sm:rounded-md sm:border sm:px-12">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute left-0 top-[14px] size-8 rounded-full bg-background p-0 sm:left-4"
+              onClick={() => {
+                router.push('/new')
+              }}
+            >
+              <IconPlus />
+              <span className="sr-only">New Chat</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>New Chat</TooltipContent>
+        </Tooltip>
         <Textarea
           ref={inputRef}
           tabIndex={0}
@@ -78,9 +98,12 @@ export function PromptForm({
           onChange={e => setInput(e.target.value)}
           placeholder="Send a message..."
           spellCheck={false}
+          autoComplete="off"
+          autoCorrect="off"
+          name="message"
           className="min-h-[60px] w-full resize-none bg-transparent px-4 py-[1.3rem] focus-within:outline-none sm:text-sm"
         />
-        <div className="absolute right-0 top-4 sm:right-4">
+        <div className="absolute right-0 top-[13px] sm:right-4">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button type="submit" size="icon" disabled={input === ''}>

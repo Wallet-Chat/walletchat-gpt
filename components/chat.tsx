@@ -8,7 +8,6 @@ import { ChatScrollAnchor } from '@/components/chat-scroll-anchor'
 import { EmptyScreen } from '@/components/empty-screen'
 import { cn } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
-import "./Main/Main.css"
 import { useUIState } from 'ai/rsc'
 import { useState } from 'react'
 import { useScrollAnchor } from '@/lib/hooks/use-scroll-anchor'
