@@ -731,7 +731,7 @@ async function executeFunction(
   return result;
 }
 
-export const POST = async (req: NextRequest, res: NextResponse) => {
+export const POST = async (req: NextRequest): Promise<Response | void> => {
   // await initializeAssistant();
   const { message } = await req.json();
   const walletAddress = await getWalletAddress(req); // Retrieve the wallet address from global state
@@ -779,7 +779,8 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
 
     // while (keepProcessing) {
     // create a message using the threadID
-    if (!walletAddress) return null;
+    if (!walletAddress)
+      return new NextResponse(JSON.stringify("connect your wallet"));
     let convo = await createConversation(walletAddress, message);
     let initialMessage: any[] = []; // Initialize as an empty array
 
