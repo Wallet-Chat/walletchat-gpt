@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Conversation {
+  id            Int      @id @default(autoincrement())
+  sessionId     String?
+  createdAt     DateTime @default(now())
+  conversations Json
+  threadId      String?
+  walletAddress String   @unique
+}
