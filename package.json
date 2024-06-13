@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "prisma migrate deploy && next start",
+    "postinstall": "prisma generate",
+    "migrate": "prisma migrate deploy",
     "lint": "next lint"
   },
   "dependencies": {
