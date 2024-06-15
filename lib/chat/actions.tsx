@@ -272,11 +272,12 @@ async function submitUserMessage(content: string) {
             url.searchParams.append("sortBy", "market_cap");
 
             const response = await fetch(url, {
-                headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                    "X-CMC_PRO_API_KEY": process.env.COINMARKETCAP_API_KEY,
-                }
+              //@ts-ignore
+              headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                "X-CMC_PRO_API_KEY": process.env.COINMARKETCAP_API_KEY,
+              }
             });
 
             if (!response.ok) {
