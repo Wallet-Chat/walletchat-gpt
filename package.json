@@ -29,6 +29,7 @@
     "@web3modal/wagmi": "^4.2.2",
     "ai": "^3.1.5",
     "axios": "^1.6.8",
+    "binance": "^2.11.3",
     "chart.js": "^4.4.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",

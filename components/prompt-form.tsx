@@ -14,7 +14,7 @@ import {
 import { useEnterSubmit } from '@/lib/hooks/use-enter-submit'
 import { useActions, useUIState } from 'ai/rsc'
 import { AI } from '@/lib/chat/actions'
-import { UserMessage } from './stocks/message'
+import { UserMessage } from './crypto/message'
 import { nanoid } from 'nanoid'
 import { useRouter } from 'next/navigation'
 

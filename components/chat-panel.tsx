@@ -3,12 +3,12 @@ import { type UseChatHelpers } from 'ai/react'
 import { ButtonScrollToBottom } from '@/components/button-scroll-to-bottom'
 import { PromptForm } from '@/components/prompt-form'
 import { Button } from '@/components/ui/button'
-import { IconRefresh, IconShare, IconStop } from '@/components/ui/icons'
+import { IconShare } from '@/components/ui/icons'
 import { FooterText } from './footer'
 import { useAIState, useActions, useUIState } from 'ai/rsc'
 import type { AI } from '@/lib/chat/actions'
 import { nanoid } from 'nanoid'
-import { UserMessage } from './stocks/message'
+import { UserMessage } from './crypto/message'
 import { ChatShareDialog } from './chat-share-dialog'
 import React from 'react'
 import { shareChat } from '@/app/actions'
@@ -66,9 +66,9 @@ export function ChatPanel({
       message: 'What is the price of $DOGE right now?'
     },
     {
-      heading: 'I would like to buy',
-      subheading: '42 $DOGE',
-      message: `I would like to buy 42 $DOGE`
+      heading: 'What is the current market stats of',
+      subheading: '$BTC right now?',
+      message: `What is the current market stats for $BTC right now?`
     },
     {
       heading: 'What are some',

@@ -10,7 +10,7 @@ interface Stock {
   delta: number
 }
 
-export function Stocks({ props: stocks }: { props: Stock[] }) {
+export function Prices({ props: stocks }: { props: Stock[] }) {
   const [, setMessages] = useUIState<typeof AI>()
   const { submitUserMessage } = useActions()
 

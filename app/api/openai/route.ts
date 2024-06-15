@@ -14,21 +14,22 @@ const ASSISTANT_ID = process.env.OPEN_AI_ASSISTANT;
 export const maxDuration = 300; // This function can run for a maximum of 5 seconds
 export const dynamic = 'force-dynamic';
 
-interface EtherscanApiParams {
-    module?: string; // The module to be used
-    action?: string; // The action to be called
-    address?: string; // Ethereum address for the query
-    tag?: "latest" | "pending" | "earliest"; // The state of the balance (latest or a block number)
-    startblock?: number; // The start block number for queries that involve transaction or event lists
-    endblock?: number; // The end block cannot exceed 9999999
-    page?: number; // The page number for queries that support pagination
-    offset?: number; // The number of results to return per page for queries that support pagination
-    sort?: "asc" | "desc"; // The sorting for the results (asc or desc), applicable to transaction and event lists
-    contractaddress?: string; // The contract address for token queries (tokentx, tokennfttx, token1155tx)
-    blocktype?: "blocks" | "uncles"; // The type of blocks to query for 'getminedblocks'
-    blockno?: number; // The specific block number for the 'balancehistory' query
-    to?: string; // The address the transaction is directed to. Use in eth_call
-}
+// interface EtherscanApiParams {
+//     module?: string; // The module to be used
+//     action?: string; // The action to be called
+//     address?: string; // Ethereum address for the query
+//     tag?: "latest" | "pending" | "earliest"; // The state of the balance (latest or a block number)
+//     startblock?: number; // The start block number for queries that involve transaction or event lists
+//     endblock?: number; // The end block cannot exceed 9999999
+//     page?: number; // The page number for queries that support pagination
+//     offset?: number; // The number of results to return per page for queries that support pagination
+//     sort?: "asc" | "desc"; // The sorting for the results (asc or desc), applicable to transaction and event lists
+//     contractaddress?: string; // The contract address for token queries (tokentx, tokennfttx, token1155tx)
+//     blocktype?: "blocks" | "uncles"; // The type of blocks to query for 'getminedblocks'
+//     blockno?: number; // The specific block number for the 'balancehistory' query
+//     to?: string; // The address the transaction is directed to. Use in eth_call
+//     apikey?: string;//apikey
+// }
 
 const functions: ChatCompletionTool[] = [
     {
@@ -228,6 +229,23 @@ const functions: ChatCompletionTool[] = [
                 properties: {
                     accountId: {
                         type: "string",
+                        description: "The Solana account ID to query for overall portfolio value"
+                    }
+                },
+                required: ["accountId"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "getSolanaAccountTokens",
+            description: "Retrieve helds by a Solana account from the Moralis Solana Gateway",
+            parameters: {
+                type: "object",
+                properties: {
+                    accountId: {
+                        type: "string",
                         description: "The Solana account ID to query for tokens"
                     }
                 },
@@ -268,12 +286,233 @@ const functions: ChatCompletionTool[] = [
                 required: ["accountId"]
             }
         }
+    },
+    {
+        type: "function",
+        function: {
+            name: "fetchNFTDataEthereum",
+            description: "Fetches NFT data for a specific on address Ethereum, Base, Polygon (EVM compatible chains) using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    address: {
+                        type: "string",
+                        description: "The address to fetch NFT data for",
+                        required: true
+                    },
+                    chain: {
+                        type: "string",
+                        description: "The blockchain to fetch NFT data from (e.g., eth)",
+                        required: true
+                    },
+                    limit: {
+                        type: "string",
+                        description: "The limit for the number of results",
+                        enum: ["5"],
+                        required: true
+                    },
+                    exclude_spam: {
+                        type: "string",
+                        description: "Flag to exclude spam",
+                        enum: ["true"],
+                        required: true
+                    },
+                    format: {
+                        type: "string",
+                        description: "The format of the returned data (e.g., decimal)"
+                    },
+                    token_addresses: {
+                        type: "string",
+                        description: "The specific NFT contract token address if filtering results based on individual NFTs",
+                        required: false
+                    },
+                    media_items: {
+                        type: "boolean",
+                        description: "Flag to include or exclude media items in the response"
+                    }
+                },
+                required: ["address", "chain", "limit", "exclude_spam"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "fetchERC20TokenOwnersEthereum",
+            description: "Fetches the owners of a specific ERC-20 Ethereum, Base, Polygon (EVM compatible chains) token using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    contractAddress: {
+                        type: "string",
+                        description: "The contract address of the ERC-20 token",
+                        required: true
+                    },
+                    chain: {
+                        type: "string",
+                        description: "The blockchain to fetch data from (e.g., eth)",
+                        required: true
+                    },
+                    order: {
+                        type: "string",
+                        description: "Order of owners based on the amount of tokens they hold",
+                        enum: ["ASC", "DESC"],
+                        required: false
+                    },
+                    cursor: {
+                        type: "string",
+                        description: "Cursor value for pagination",
+                        required: false
+                    }
+                },
+                required: ["contractAddress", "chain"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "getWalletStatsEthereum",
+            description: "Get statistics for a specific wallet on Ethereum, Base, Polygon (EVM compatible chaines) using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    walletAddress: {
+                        type: "string",
+                        description: "The wallet address to retrieve the statistics for.",
+                        required: true
+                    },
+                    chain: {
+                        type: "string",
+                        description: "The blockchain network of the wallet",
+                        enum: ["0x1", "bsc", "polygon", "base", "arbitrum", "optimism", "chiliz", "gnosis"],
+                        required: true
+                    }
+                },
+                required: ["walletAddress", "chain"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "fetchERC20DataEthereum",
+            description: "Fetches ERC-20 token data for a specific address on Ethereum, Base, Polygon (EVM compatible chains) using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    address: {
+                        type: "string",
+                        description: "The wallet address to fetch ERC-20 token data for.",
+                        required: true
+                    },
+                    chain: {
+                        type: "string",
+                        description: "The blockchain network of the wallet",
+                        enum: ["0x1", "bsc", "polygon", "base", "arbitrum", "optimism", "chiliz", "gnosis"],
+                        required: true
+                    },
+                    exclude_spam: {
+                        type: "string",
+                        description: "Flag to exclude spam",
+                        enum: ["true"],
+                        default: "true"
+                    }
+                },
+                required: ["address", "chain", "exclude_spam"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "getWalletNetWorthEthereum",
+            description: "Get the net worth of a specific wallet for Ethereum, Base, Polygon (EVM compatible chains) using the Moralis API.",
+            parameters: {
+                type: "object",
+                properties: {
+                    walletAddress: {
+                        type: "string",
+                        description: "The wallet address to retrieve the net worth for.",
+                        required: true
+                    },
+                    exclude_spam: {
+                        type: "boolean",
+                        description: "Option to exclude spam from the net worth calculation.",
+                        required: false
+                    },
+                    exclude_unverified_contracts: {
+                        type: "boolean",
+                        description: "Option to exclude unverified contracts from the net worth calculation.",
+                        required: false
+                    }
+                },
+                required: ["walletAddress"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            "name": "fetchCryptoNews",
+            "description": "Fetches crypto news for a specific coin using the Crypto News API.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "coin": {
+                        "type": "string",
+                        "description": "The ticker symbol of the cryptocurrency to fetch news for."
+                    }
+                },
+                "required": ["coin"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            "name": "fetchSolanaTransactions",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pubkey": {
+                        "type": "string",
+                        "description": "The public key of the account to fetch transactions for."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "The limit for the number of transactions to fetch.",
+                        "default": 3
+                    }
+                },
+                "required": ["pubkey"]
+            },
+            "description": "Fetches transactions for a specific Solana account using the Solana Beach API."
+        }        
+    },
+    {
+        type: "function",
+        function: {
+            "name": "fetchSolanaTransactionInfo",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "signature": {
+                        "type": "string",
+                        "description": "The signature or hash the solana transaction to gather data for"
+                    }
+                },
+                "required": ["signature"]
+            },
+            "description": "Fetches transaction info for a specific Solana transaction using the Solana Beach API."
+        }        
     }
 ];
 
 let threadId: string;  // Store the thread ID
 const conversations: any = {};  // In-memory store for conversations
 const threadIdByWallet: any = {};  // In-memory store for conversations
+const threadStatus: any = {};  // In-memory store for thread statuses
 
 let assistant: Assistant;
 
@@ -320,70 +559,110 @@ async function askAIForExplanation(message: string): Promise<string> {
     }
 }
 
-const executeFunction = async (functionName: string, args: any, userQuestion: string, recursionDepth = 0): Promise<any> => {
+function parseArguments(args: any): any {
+    // If the args is a string, try to parse it
+    if (typeof args === 'string') {
+        try {
+            // Attempt to parse the string
+            const parsedArgs = JSON.parse(args);
+
+            // If parsedArgs is an object, return it, otherwise return the original args
+            return typeof parsedArgs === 'object' ? parsedArgs : args;
+        } catch (e) {
+            // If parsing fails, return the original args
+            return args;
+        }
+    }
+    // If args is already an object, return it directly
+    return args;
+}
+
+async function executeFunction(functionName: string, args: string, recursionDepth = 0): Promise<any> {
     const MAX_RECURSION_DEPTH = 5;
     let result: any;
-    let askForExplanation = false;
 
     if (recursionDepth > MAX_RECURSION_DEPTH) {
         throw new Error("Maximum recursion depth exceeded");
     }
 
-    console.log("Executing function:", functionName, args, userQuestion);
+    console.log("Executing function:", functionName, args);
+
+    // Parse args string to an object
+    const parsedArgs = parseArguments(args)
 
     switch (functionName) {
         case "getCryptocurrencyPrice":
-            result = await getCryptocurrencyPrice(args);
+            result = await getCryptocurrencyPrice(parsedArgs);
             break;
         case "resolveEnsNameToAddress":
-            result = await resolveEnsNameToAddress(args);
+            result = await resolveEnsNameToAddress(parsedArgs.ensName);
             break;
         case "etherscanQuery":
-            result = await etherscanApiQuery(args);
-            askForExplanation = true; 
+            result = await etherscanApiQuery(parsedArgs);
             break;
         case "executeSolanaTokenOverlap":
         case "executeSolanaTokenWalletProfitLoss":
         case "executeSolanaTokenOwnerInfo":
         case "executeEthereumTokenOverlap":
-            const executionId = await executeDuneQuery(functionName, args);
+            const executionId = await executeDuneQuery(functionName, parsedArgs);
             result = await pollQueryStatus(executionId);
             break;
         case "getSolanaAccountPortfolio":
-            const portfolioData = await getSolanaAccountPortfolio(args.accountId);
+            console.log("Get Solana Portfolio for: ", parsedArgs)
+            const portfolioData = await getSolanaAccountPortfolio(parsedArgs.accountId);
             result = formatSolanaPortfolio(portfolioData);
             break;
+        case "getSolanaAccountTokens":
+            console.log("Get Solana Tokens for: ", parsedArgs)
+            result = await getSolanaAccountTokens(parsedArgs.accountId);
+            break;
         case "getSolanaTokenPrice":
-            result = await getSolanaTokenPrice(args.tokenId);
+            result = await getSolanaTokenPrice(parsedArgs.tokenId);
             break;
         case "getSolanaAccountNFTs":
-            result = await getSolanaAccountNFTs(args.accountId);
+            result = await getSolanaAccountNFTs(parsedArgs.accountId);
+            break;
+        //Moralis functions (EVM)
+        case "fetchNFTDataEthereum":
+            result = await fetchNFTData(parsedArgs);
+            break;
+        case "fetchERC20TokenOwnersEthereum":
+            result = await fetchERC20TokenOwners(parsedArgs);
+            break;
+        case "getWalletStatsEthereum":
+            result = await getWalletStats(parsedArgs);
+            break;
+        case "fetchERC20DataEthereum":
+            result = await fetchERC20Data(parsedArgs);
+            break;
+        case "getWalletNetWorthEthereum":
+            result = await getWalletNetWorth(parsedArgs);
+            break;
+        case "fetchCryptoNews":
+            result = await fetchCryptoNews(parsedArgs.coin);
+            break;
+        case "fetchSolanaTransactions":
+            result = await fetchSolanaTransactions(parsedArgs);
+            break;
+        case "fetchSolanaTransactionInfo":
+            result = await fetchSolanaTransactionInfo(parsedArgs.signature);
             break;
         default:
             throw new Error(`Unknown function: ${functionName}`);
     }
 
-    // Ask for an explanation if necessary - TBD - needs work for streaming a limiting input (transaction results can be too long and error out)
-    // if (result && askForExplanation) {
-    //     let explanation;
-    //     try {
-    //         const resultValue = result.result ? result.result : result;
-    //         const message = `Question: ${userQuestion} Result: ${resultValue}`;
-    //         explanation = await askAIForExplanation(message);
-    //         result = `${resultValue} </br></br> Result Explanation: ${explanation}`;
-    //     } catch (error) {
-    //         console.error("Failed to get explanation from AI:", error);
-    //         explanation = "Failed to generate an explanation.";
-    //         result = `Question: ${userQuestion}\nResult: ${JSON.stringify(result)}\nExplanation: ${explanation}`;
-    //     }
+    // Check if result is a string before applying the replacements
+    // if (typeof result === 'string') {
+    //     console.log("result format!!: ", typeof result)
+    //     const resultFormatted = result.split("\n\n").join("</br>");
+    //     const resultFormatted2 = resultFormatted.split("\n").join("</br>");
+    //     return resultFormatted2;
+    // } else {
+    //     console.log("result format: ", typeof result)
     // }
 
-    const resultFormatted = result.split("\n\n").join("</br>");
-    const resultFormatted2 = resultFormatted.split("\n").join("</br>");
-
-    return resultFormatted2;
-};
-
+    return result;
+}
 
 export const POST = async (req: NextRequest, res: NextResponse) => {
     // await initializeAssistant();
@@ -397,6 +676,7 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
     } else {
         threadId = threadIdByWallet[walletAddress];
         if (!threadId) {
+            console.log("***** creating new thread for wallet: ", walletAddress)
             const thread = await openai.beta.threads.create();
             threadId = thread.id;
             conversations[threadId] = []; // Initialize as an array if a new thread is created
@@ -410,8 +690,17 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
             conversations[threadId] = [];
         }
     
-       
-    
+        // Check if there is a pending function call for this thread
+        if (threadStatus[threadId] === 'pending') {
+            return new NextResponse(JSON.stringify({ error: "A function call is already in progress for this thread" }), {
+                status: 429, // Too many requests
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        // Mark this thread as having a pending function call
+        threadStatus[threadId] = 'pending';
+
         let functionResult;
         let keepProcessing = true;
         let previousCalls: string[] = []; // Array to keep track of previous function calls and their arguments
@@ -437,7 +726,11 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
 
             const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
 
-            console.log('response:', retrieve);
+            console.log('response for runID:', run?.id, retrieve);
+
+            // Unset the pending status after function call is complete
+            threadStatus[threadId] = 'completed';
+
             // const completion = await openai.chat.completions.create({
             //     model: "gpt-4o",
             //     messages: conversations[threadId],
@@ -488,6 +781,10 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
     
     } catch (error) {
         console.error("Error during API call:", error);
+
+        // Unset the pending status if there is an error
+        threadStatus[threadId] = 'completed';
+
         return new NextResponse(JSON.stringify({ error: "Failed to get completion from OpenAI", details: error }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
@@ -495,8 +792,8 @@ export const POST = async (req: NextRequest, res: NextResponse) => {
     }    
 };
 
-
 const executeDuneQuery = async (functionName: string, args: any) => {
+    console.log("execute Dune Query with args: ", args)
     const queryIds: any = {
         executeSolanaTokenOverlap: 3623869,
         executeSolanaTokenWalletProfitLoss: 3657856,
@@ -562,52 +859,120 @@ const getQueryResults = async (executionId: string) => {
     }
 };
 
-async function checkStatusAndReturnMessages(threadId: string, runId: string) {
-    return new Promise(async (resolve, reject) => {
+interface Message {
+  role: string;
+  content: string;
+}
+
+interface ToolOutput {
+    tool_call_id: string;
+    output: string;
+}
+
+const threadMutex: { [threadId: string]: boolean } = {};
+
+async function checkStatusAndReturnMessages(threadId: string, runId: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
         const interval = setInterval(async () => {
-            console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
-            let runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
-            console.log(runStatus.status)
-            if (runStatus.status === "completed") {
+            try {
+                // If the function is already running for this thread, return immediately or handle as needed
+                if (!threadMutex[threadId]) {
+                    // Set the mutex to indicate the function is running
+                    threadMutex[threadId] = true;
+
+                    console.log(`Checking status of run: ${runId} for thread: ${threadId}`);
+                    const runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+                    console.log(runStatus.status);
+
+                    if (runStatus.status === "completed") {
+                        clearInterval(interval);
+                        const messages = await openai.beta.threads.messages.list(threadId);
+                        const conversationHistory: Message[] = messages.data.map((msg: any) => ({
+                            role: msg.role,
+                            content: msg.content[0].text.value
+                        }));
+                        const latestAssistantMessage = conversationHistory.slice().find(entry => entry.role === 'assistant')?.content || "No assistant message found";
+                        //console.log("completed - convoHistory: ", conversationHistory);
+                        //console.log("Latest assistant message: ", latestAssistantMessage);
+                        resolve(latestAssistantMessage);
+                    } else if (runStatus.status === "requires_action") {
+                        const toolsToCall = runStatus.required_action?.submit_tool_outputs.tool_calls;
+                        console.log(toolsToCall?.length);
+                        let tool_outputs: ToolOutput[] = [];
+
+                        if(toolsToCall) {
+                            for (const tool of toolsToCall) {
+                                console.log(tool.function.name);
+                                console.log(tool.function.arguments);
+
+                                let tool_output: any = { status: 'error', message: 'function not found' };
+
+                                // Execute the function and store the result
+                                let functionResult = await executeFunction(tool.function.name, tool.function.arguments);
+                                console.log("Function Call Result: ", functionResult);
+                                tool_output = functionResult;
+
+                                // Append the result of the function execution to the conversation
+                                conversations[threadId].push({ role: 'assistant', content: functionResult });
+
+                                tool_outputs.push({
+                                    tool_call_id: tool.id,
+                                    output: JSON.stringify(tool_output)
+                                });
+                                console.log("added to tools_outputs: ", tool_outputs);
+                            }
+
+                            // Send back output
+                            await submitToolOutputs(threadId, runId, tool_outputs);
+                        }
+                    } 
+                    
+                    // Clear the mutex
+                    threadMutex[threadId] = false;
+                }
+            } catch (error) {
+                console.error("An error occurred:", error);
                 clearInterval(interval);
-                let messages = await openai.beta.threads.messages.list(threadId);
-                const conversationHistory: any = [];
-                messages.data.forEach((msg: any) => {
-                    const role = msg.role;
-                    const content = msg.content[0].text.value;
-                    conversationHistory.push({ role: role, content: content });
-                });
 
-                // Extract the latest assistant message from the conversation history
-                const latestAssistantMessage = conversationHistory.filter((entry: any) => entry.role === 'assistant').pop().content;
+                // Clear the mutex
+                threadMutex[threadId] = false;
 
-                // Resolve the promise with the latest assistant message
-                resolve(latestAssistantMessage); // This now resolves with only the latest assistant message
+                reject(error);
             }
         }, 2000); // Poll every 2 seconds
     });
 }
 
-async function submitToolOutputs(threadId: string, runId: string, toolOutputs: any) {
+async function submitToolOutputs(threadId: string, runId: string, tool_outputs: ToolOutput[]) {
     try {
+        console.log("submitting tool outputs: ", threadId, runId, tool_outputs);
         const run = await openai.beta.threads.runs.submitToolOutputs(
-          threadId,
-          runId,
-          { tool_outputs: toolOutputs }
+            threadId,
+            runId,
+            { tool_outputs }
         );
     
         console.log("run in submit tool output", run);
-    
-        return Response.json({ run: run, success: true });
+
+        return new NextResponse(JSON.stringify({ run: run, success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
     } catch (e) {
         console.log("Error in submit tool output", e);
-        return Response.json({ error: e, success: false });
+        return new NextResponse(JSON.stringify({ error: e, success: false }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
 }
 
+interface EnsNameInput {
+    ensName: string;
+}
 // ENS name resolving function
-async function resolveEnsNameToAddress({ ensName } : { ensName: string }) {
-    console.log(`resolveEnsNameToAddress called with ensName: ${ensName}`);
+async function resolveEnsNameToAddress(ensName: string) {
+    console.log(`resolveEnsNameToAddress called with ensName:`, ensName);
     const baseUrl = 'https://api.v2.walletchat.fun';
     const response = await axios.get(`${baseUrl}/resolve_name/${ensName}`);
     if (response.status === 200) {
@@ -618,7 +983,7 @@ async function resolveEnsNameToAddress({ ensName } : { ensName: string }) {
 }
 
 // Generic function to interact with the Etherscan API
-async function etherscanApiQuery(params: EtherscanApiParams) {
+async function etherscanApiQuery(params: any) {
     console.log("Received params for Etherscan API:", params);
 
     const baseUrl = 'https://api.etherscan.io/api';
@@ -633,8 +998,8 @@ async function etherscanApiQuery(params: EtherscanApiParams) {
         console.log("Received response from Etherscan:", response.data); // Debug print to check response data
 
         if (response.status === 200) {
-            return formatEtherscanResponse({data: response.data.result, params: params})
-            // return response.data; // Return the whole response data for flexibility
+            //return formatEtherscanResponse({data: response.data.result, params: params})
+            return response.data; // Return the whole response data for flexibility
         } else {
             throw new Error(`Etherscan API call failed. Status: ${response.status}`);
         }
@@ -678,7 +1043,150 @@ interface ApiResponse<T> {
     tokens?: T[];
     nfts?: T[];
 }
+interface FetchNFTDataParams {
+    address: string;
+    chain: string;
+    limit: string;
+    exclude_spam: string;
+    format?: string;
+    token_addresses?: string;
+    media_items?: boolean;
+}
 
+interface FetchERC20TokenOwnersParams {
+    contractAddress: string;
+    chain: string;
+    order?: "ASC" | "DESC";
+    cursor?: string;
+}
+
+interface GetWalletStatsParams {
+    walletAddress: string;
+    chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis";
+}
+
+interface FetchERC20DataParams {
+    address: string;
+    chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis";
+    exclude_spam: "true" | "false"
+}
+
+interface GetWalletNetWorthParams {
+    walletAddress: string;
+    exclude_spam?: boolean;
+    exclude_unverified_contracts?: boolean;
+}
+
+const fetchCryptoNews = async (coin: string): Promise<any> => {
+    const url = `https://cryptonews-api.com/api/v1?tickers=${coin}&items=3&token=${process.env.CRYPTO_NEWS_API_KEY}`;
+
+    try {
+        const response = await axios.get(url);
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            console.error('Error fetching crypto news:', error.response?.data?.message || error.message);
+            throw new Error(error.response?.data?.message || 'Error fetching crypto news');
+        } else {
+            console.error('Unexpected error:', error);
+            throw new Error('An unexpected error occurred');
+        }
+    }
+};
+
+async function fetchNFTData(params: FetchNFTDataParams): Promise<any> {
+    const { address, chain, limit, exclude_spam, format, token_addresses, media_items } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/${address}/nft`;
+    const queryParams = {
+        chain,
+        limit,
+        exclude_spam,
+        format,
+        token_addresses,
+        media_items
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch NFT data:", error);
+        throw error;
+    }
+}
+
+async function fetchERC20TokenOwners(params: FetchERC20TokenOwnersParams): Promise<any> {
+    const { contractAddress, chain, order, cursor } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/erc20/${contractAddress}/owners`;
+    const queryParams = {
+        chain,
+        order,
+        cursor
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch ERC-20 token owners:", error);
+        throw error;
+    }
+}
+
+async function getWalletStats(params: GetWalletStatsParams): Promise<any> {
+    const { walletAddress, chain } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/stats`;
+    const queryParams = {
+        chain
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch wallet stats:", error);
+        throw error;
+    }
+}
+
+async function fetchERC20Data(params: FetchERC20DataParams): Promise<any> {
+    const { address, chain, exclude_spam } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20`;
+    const queryParams = {
+        chain,
+        exclude_spam
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch ERC-20 data:", error);
+        throw error;
+    }
+}
+
+async function getWalletNetWorth(params: GetWalletNetWorthParams): Promise<any> {
+    const { walletAddress, exclude_spam, exclude_unverified_contracts } = params;
+    const url = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/net-worth`;
+    const queryParams = {
+        exclude_spam,
+        exclude_unverified_contracts
+    };
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+    try {
+        const response = await axios.get(url, { headers, params: queryParams });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch wallet net worth:", error);
+        throw error;
+    }
+}
 
 async function getSolanaAccountNFTs(accountId: string): Promise<ApiResponse<SolanaNFT>> {
     const url = `https://solana-gateway.moralis.io/account/mainnet/${accountId}/nft`;
@@ -720,6 +1228,58 @@ async function getSolanaAccountPortfolio(accountId: string): Promise<ApiResponse
     }
 }
 
+async function getSolanaAccountTokens(accountId: string): Promise<ApiResponse<SolanaToken>> {
+    const url = `https://solana-gateway.moralis.io/account/mainnet/${accountId}/tokens`;
+    const headers = { 'X-API-Key': process.env.MORALIS_API_KEY };
+
+    try {
+        console.log("get Solana tokens by address for: ", accountId)
+        const response = await axios.get<ApiResponse<SolanaToken>>(url, { headers });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch Solana account tokens:", error);
+        throw error;
+    }
+}
+
+interface FetchTransactionsParams {
+    pubkey: string;
+    limit?: number;
+}
+async function fetchSolanaTransactions(params: FetchTransactionsParams): Promise<any> {
+    const { pubkey, limit } = params;
+    const url = `https://api.solanabeach.io/v1/account/${pubkey}/transactions`;
+    const headers = { 
+        'Accept': 'application/json', 
+        'Authorization': process.env.SOLANA_BEACH_API_KEY as string 
+    };
+    try {
+        const response = await axios.get(url, { 
+            headers, 
+            params: limit ? { limit } : {} 
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+        throw error;
+    }
+}
+async function fetchSolanaTransactionInfo(singatureHash: string): Promise<any> {
+    const url = `https://api.solanabeach.io/v1/transaction/${singatureHash}`;
+    const headers = { 
+        'Accept': 'application/json', 
+        'Authorization': process.env.SOLANA_BEACH_API_KEY as string 
+    };
+    try {
+        const response = await axios.get(url, { 
+            headers
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+        throw error;
+    }
+}
 interface CryptoPriceParams {
     symbol: string;
 }

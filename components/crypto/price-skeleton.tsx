@@ -1,4 +1,4 @@
-export const StockSkeleton = () => {
+export const PriceSkeleton = () => {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-green-400">
       <div className="float-right inline-block w-fit rounded-full bg-zinc-700 px-2 py-1 text-xs text-transparent">

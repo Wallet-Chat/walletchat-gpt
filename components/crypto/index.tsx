@@ -1,20 +1,20 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { StockSkeleton } from './stock-skeleton'
-import { StocksSkeleton } from './stocks-skeleton'
+import { PriceSkeleton } from './price-skeleton'
+import { PricesSkeleton } from './prices-skeleton'
 import { EventsSkeleton } from './events-skeleton'
 
 export { spinner } from './spinner'
 export { BotCard, BotMessage, SystemMessage } from './message'
 
-const Stock = dynamic(() => import('./stock').then(mod => mod.Stock), {
+const Price = dynamic(() => import('./price').then(mod => mod.Price), {
   ssr: false,
-  loading: () => <StockSkeleton />
+  loading: () => <PriceSkeleton />
 })
 
 const Purchase = dynamic(
-  () => import('./stock-purchase').then(mod => mod.Purchase),
+  () => import('./crypto-purchase').then(mod => mod.Purchase),
   {
     ssr: false,
     loading: () => (
@@ -23,9 +23,9 @@ const Purchase = dynamic(
   }
 )
 
-const Stocks = dynamic(() => import('./stocks').then(mod => mod.Stocks), {
+const Prices = dynamic(() => import('./prices').then(mod => mod.Prices), {
   ssr: false,
-  loading: () => <StocksSkeleton />
+  loading: () => <PricesSkeleton />
 })
 
 const Events = dynamic(() => import('./events').then(mod => mod.Events), {
@@ -33,4 +33,4 @@ const Events = dynamic(() => import('./events').then(mod => mod.Events), {
   loading: () => <EventsSkeleton />
 })
 
-export { Stock, Purchase, Stocks, Events }
+export { Price, Purchase, Prices, Events }
