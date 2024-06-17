@@ -1,6 +1,5 @@
 import { Sidebar } from '@/components/sidebar'
 
-import { auth } from '@/auth'
 import { ChatHistory } from '@/components/chat-history'
 import { nanoid } from 'nanoid'
 

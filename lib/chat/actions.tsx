@@ -17,7 +17,6 @@ import {
   SystemMessage,
   Purchase
 } from '@/components/crypto'
-
 import { z } from 'zod'
 import { EventsSkeleton } from '@/components/crypto/events-skeleton'
 import { Events } from '@/components/crypto/events'
@@ -30,7 +29,6 @@ import {
 import { saveChat } from '@/app/actions'
 import { SpinnerMessage, UserMessage } from '@/components/crypto/message'
 import { Chat, Message } from '@/lib/types'
-import { auth } from '@/auth'
 import axios from 'axios'
 import { PriceSkeleton } from '@/components/crypto/price-skeleton'
 import { Price } from '@/components/crypto/price'
@@ -415,119 +413,169 @@ async function submitUserMessage(content: string) {
           )
         }
       },
-      show_crypto_purchase: {
-        description:
-          'Show price and the UI to purchase a cryptocurrency. Use this if the user wants to purchase a cryptocurrency.',
+      resolve_ensName_toAddress: {
+        description: 'Get the wallet address of a given ENS name. Use this to show the user the address of a given ENS name.',
         parameters: z.object({
-          symbol: z
-            .string()
-            .describe(
-              'The name or symbol of the cryptocurrency. e.g. DOGE/SOL/BTC.'
-            ),
-          price: z.number().describe('The price of the crypto.'),
-          numberOfShares: z
-            .number()
-            .describe(
-              'The **number of tokens** for a cryptocurrency to purchase. Can be optional if the user did not specify it.'
-            )
+          ensName: z.string().describe("The ENS name of a user e.g, vitalik.eth/mgoesdistance.eth/cyberkevin.eth")
         }),
-        generate: async function* ({ symbol, price, numberOfShares = 100 }) {
+
+        generate: async function* ({ ensName } : { ensName: string }) {
+          
+          const result = await resolveEnsNameToAddress(ensName);
+
+          await sleep(1000);
+
           const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'resolve_ensName_toAddress',
+                    toolCallId,
+                    args: { ensName }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'resolve_ensName_toAddress',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
 
-          if (numberOfShares <= 0 || numberOfShares > 1000) {
-            aiState.done({
-              ...aiState.get(),
-              messages: [
-                ...aiState.get().messages,
-                {
-                  id: nanoid(),
-                  role: 'assistant',
-                  content: [
-                    {
-                      type: 'tool-call',
-                      toolName: 'show_crypto_purchase',
-                      toolCallId,
-                      args: { symbol, price, numberOfShares }
-                    }
-                  ]
-                },
-                {
-                  id: nanoid(),
-                  role: 'tool',
-                  content: [
-                    {
-                      type: 'tool-result',
-                      toolName: 'show_crypto_purchase',
-                      toolCallId,
-                      result: {
-                        symbol,
-                        price,
-                        numberOfShares,
-                        status: 'expired'
-                      }
-                    }
-                  ]
-                },
-                {
-                  id: nanoid(),
-                  role: 'system',
-                  content: `[User has selected an invalid amount]`
-                }
-              ]
-            })
-
-            return <BotMessage content={'Invalid amount'} />
-          } else {
-            aiState.done({
-              ...aiState.get(),
-              messages: [
-                ...aiState.get().messages,
-                {
-                  id: nanoid(),
-                  role: 'assistant',
-                  content: [
-                    {
-                      type: 'tool-call',
-                      toolName: 'show_crypto_purchase',
-                      toolCallId,
-                      args: { symbol, price, numberOfShares }
-                    }
-                  ]
-                },
-                {
-                  id: nanoid(),
-                  role: 'tool',
-                  content: [
-                    {
-                      type: 'tool-result',
-                      toolName: 'show_crypto_purchase',
-                      toolCallId,
-                      result: {
-                        symbol,
-                        price,
-                        numberOfShares
-                      }
-                    }
-                  ]
-                }
-              ]
-            })
-
-            return (
-              <BotCard>
-                <Purchase
-                  props={{
-                    numberOfShares,
-                    symbol,
-                    price: +price,
-                    status: 'requires_action'
-                  }}
-                />
-              </BotCard>
-            )
-          }
-        }
+          return (
+            <BotMessage content={result} />
+          ) 
+        } 
       },
+      // show_crypto_purchase: {
+      //   description:
+      //     'Show price and the UI to purchase a cryptocurrency. Use this if the user wants to purchase a cryptocurrency.',
+      //   parameters: z.object({
+      //     symbol: z
+      //       .string()
+      //       .describe(
+      //         'The name or symbol of the cryptocurrency. e.g. DOGE/SOL/BTC.'
+      //       ),
+      //     price: z.number().describe('The price of the crypto.'),
+      //     numberOfShares: z
+      //       .number()
+      //       .describe(
+      //         'The **number of tokens** for a cryptocurrency to purchase. Can be optional if the user did not specify it.'
+      //       )
+      //   }),
+      //   generate: async function* ({ symbol, price, numberOfShares = 100 }) {
+      //     const toolCallId = nanoid()
+
+      //     if (numberOfShares <= 0 || numberOfShares > 1000) {
+      //       aiState.done({
+      //         ...aiState.get(),
+      //         messages: [
+      //           ...aiState.get().messages,
+      //           {
+      //             id: nanoid(),
+      //             role: 'assistant',
+      //             content: [
+      //               {
+      //                 type: 'tool-call',
+      //                 toolName: 'show_crypto_purchase',
+      //                 toolCallId,
+      //                 args: { symbol, price, numberOfShares }
+      //               }
+      //             ]
+      //           },
+      //           {
+      //             id: nanoid(),
+      //             role: 'tool',
+      //             content: [
+      //               {
+      //                 type: 'tool-result',
+      //                 toolName: 'show_crypto_purchase',
+      //                 toolCallId,
+      //                 result: {
+      //                   symbol,
+      //                   price,
+      //                   numberOfShares,
+      //                   status: 'expired'
+      //                 }
+      //               }
+      //             ]
+      //           },
+      //           {
+      //             id: nanoid(),
+      //             role: 'system',
+      //             content: `[User has selected an invalid amount]`
+      //           }
+      //         ]
+      //       })
+
+      //       return <BotMessage content={'Invalid amount'} />
+      //     } else {
+      //       aiState.done({
+      //         ...aiState.get(),
+      //         messages: [
+      //           ...aiState.get().messages,
+      //           {
+      //             id: nanoid(),
+      //             role: 'assistant',
+      //             content: [
+      //               {
+      //                 type: 'tool-call',
+      //                 toolName: 'show_crypto_purchase',
+      //                 toolCallId,
+      //                 args: { symbol, price, numberOfShares }
+      //               }
+      //             ]
+      //           },
+      //           {
+      //             id: nanoid(),
+      //             role: 'tool',
+      //             content: [
+      //               {
+      //                 type: 'tool-result',
+      //                 toolName: 'show_crypto_purchase',
+      //                 toolCallId,
+      //                 result: {
+      //                   symbol,
+      //                   price,
+      //                   numberOfShares
+      //                 }
+      //               }
+      //             ]
+      //           }
+      //         ]
+      //       })
+
+      //       return (
+      //         <BotCard>
+      //           <Purchase
+      //             props={{
+      //               numberOfShares,
+      //               symbol,
+      //               price: +price,
+      //               status: 'requires_action'
+      //             }}
+      //           />
+      //         </BotCard>
+      //       )
+      //     }
+      //   }
+      // },
       getEvents: {
         description:
           'Get crypto events for a given cryptocurrency that describe the crypto activity. e.g DOGE/SOL/ETH/BTC',
@@ -617,46 +665,58 @@ export const AI = createAI<AIState, UIState>({
   onGetUIState: async () => {
     'use server'
 
-    const session = await auth()
+    // const session = await auth()
+    
+    try {
+      const address = await axios.get('/api/connectWallet');
 
-    if (session && session.user) {
-      const aiState = getAIState()
-
-      if (aiState) {
-        const uiState = getUIStateFromAIState(aiState as Chat)
-        return uiState
+      if (address.data && address.data) {
+        const aiState = getAIState()
+  
+        if (aiState) {
+          const uiState = getUIStateFromAIState(aiState as Chat)
+          return uiState
+        }
+      } else {
+        return
       }
-    } else {
-      return
+    } catch (error) {
+      console.log(error)
     }
   },
   onSetAIState: async ({ state }) => {
     'use server'
 
-    const session = await auth()
+    // const session = await auth()
+    
+    try {
+      const address = await axios.get('/api/connectWallet');
 
-    if (session && session.user) {
-      const { chatId, messages } = state
-
-      const createdAt = new Date()
-      const userId = session.user.id as string
-      const path = `/chat/${chatId}`
-
-      const firstMessageContent = messages[0].content as string
-      const title = firstMessageContent.substring(0, 100)
-
-      const chat: Chat = {
-        id: chatId,
-        title,
-        userId,
-        createdAt,
-        messages,
-        path
+      if (address.data && address.data) {
+        const { chatId, messages } = state
+  
+        const createdAt = new Date()
+        const userId = address.data
+        const path = `/chat/${chatId}`
+  
+        const firstMessageContent = messages[0].content as string
+        const title = firstMessageContent.substring(0, 100)
+  
+        const chat: Chat = {
+          id: chatId,
+          title,
+          userId,
+          createdAt,
+          messages,
+          path
+        }
+  
+        await saveChat(chat)
+      } else {
+        return
       }
-
-      await saveChat(chat)
-    } else {
-      return
+    } catch (error) {
+      console.log(error)
     }
   }
 })
@@ -698,6 +758,17 @@ export const getUIStateFromAIState = (aiState: Chat) => {
           <BotMessage content={message.content} />
         ) : null
     }))
+}
+
+async function resolveEnsNameToAddress(ensName: string) {
+  console.log(`resolveEnsNameToAddress called with ensName:`, ensName);
+  const baseUrl = 'https://api.v2.walletchat.fun';
+  const response = await axios.get(`${baseUrl}/resolve_name/${ensName}`);
+  if (response.status === 200) {
+      return `The Ethereum address for ${ensName} is ${response.data.address}`;
+  } else {
+      throw new Error(`Failed to resolve ENS name. Status code: ${response.status}`);
+  }
 }
 
 const fetchCryptoNews = async (coin: string): Promise<any> => {
