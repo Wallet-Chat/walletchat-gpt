@@ -27,7 +27,7 @@ import {
 interface SidebarActionsProps {
   chat: Chat
   removeChat: (args: { id: string; path: string }) => ServerActionResult<void>
-  shareChat: (id: string) => ServerActionResult<Chat>
+  shareChat: (id: string) => void
 }
 
 export function SidebarActions({
