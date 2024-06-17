@@ -37,7 +37,7 @@ export interface ChatPanelProps {
 }
 
 export function ChatPanel({
-  id,
+  id ,
   // isLoading,
   // stop,
   // append,
