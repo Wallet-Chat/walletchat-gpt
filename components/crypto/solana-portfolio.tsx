@@ -4,6 +4,9 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 export default function SolanaPortfolio({ tokens, nfts, balance, address } : { tokens: any, nfts: any, balance: string, address: string }) {
   return (
     <div className="flex flex-col w-full min-h-screen bg-gray-100 dark:bg-gray-950">
+        <div className="bg-gray-900 text-white p-4 rounded-t-lg">
+            <h1 className="text-2xl font-bold">The portfolio of the Solana account: {`${address?.slice(0, 7)}...${address?.slice(35)}`} includes the following:</h1>
+        </div>
       <main className="container mx-auto px-4 py-8 md:px-6 md:py-10 flex-1 grid gap-8">
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
@@ -31,16 +34,15 @@ export default function SolanaPortfolio({ tokens, nfts, balance, address } : { t
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {/* {tokens?.map((token: any, index: number) => ( */}
-                    {}
-                        <TableRow>
-                            <TableCell>{tokens?.name}</TableCell>
-                            <TableCell>{tokens?.symbol}</TableCell>
-                            <TableCell>{`${tokens?.associatedTokenAddress?.slice(0, 7)}...${tokens.associatedTokenAddress?.slice(35)}`}</TableCell>
-                            <TableCell>{`${tokens?.mint?.slice(0, 7)}...${tokens.mint?.slice(35)}`}</TableCell>
-                            <TableCell>{tokens?.amount}</TableCell>
+                    {tokens?.map((token: any, index: number) => (
+                        <TableRow key={index}>
+                            <TableCell>{token?.name}</TableCell>
+                            <TableCell>{token?.symbol}</TableCell>
+                            <TableCell>{`${token?.associatedTokenAddress?.slice(0, 7)}...${token.associatedTokenAddress?.slice(35)}`}</TableCell>
+                            <TableCell>{`${token?.mint?.slice(0, 7)}...${token.mint?.slice(35)}`}</TableCell>
+                            <TableCell>{token?.amount}</TableCell>
                         </TableRow>
-                    {/* ))} */}
+                    ))}
                 </TableBody>
               </Table>
             </ScrollArea>
@@ -62,14 +64,14 @@ export default function SolanaPortfolio({ tokens, nfts, balance, address } : { t
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {/* {nfts?.map((nft: any, index: number) => ( */}
-                        <TableRow>
-                            <TableCell>{nfts?.name}</TableCell>
-                            <TableCell>{nfts?.symbol}</TableCell>
-                            <TableCell>{`${nfts?.associatedTokenAddress?.slice(0, 7)}...${nfts.associatedTokenAddress?.slice(35)}`}</TableCell>
-                            <TableCell>{`${nfts?.mint?.slice(0, 7)}...${nfts.mint?.slice(35)}`}</TableCell>
+                    {nfts?.map((nft: any, index: number) => (
+                        <TableRow key={index}>
+                            <TableCell>{nft?.name}</TableCell>
+                            <TableCell>{nft?.symbol}</TableCell>
+                            <TableCell>{`${nft?.associatedTokenAddress?.slice(0, 7)}...${nft.associatedTokenAddress?.slice(35)}`}</TableCell>
+                            <TableCell>{`${nft?.mint?.slice(0, 7)}...${nft.mint?.slice(35)}`}</TableCell>
                         </TableRow>
-                    {/* ))} */}
+                    ))}
                 </TableBody>
               </Table>
             </ScrollArea>

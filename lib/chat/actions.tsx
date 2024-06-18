@@ -530,10 +530,7 @@ async function submitUserMessage(content: string) {
             </BotCard>
           )
           
-          const response = await getSolanaAccountPortfolio(accountId);
-          const result = formatSolanaPortfolio(response)
-          console.log(response)
-          // console.log(result)
+          const result = await getSolanaAccountPortfolio(accountId);
 
           await sleep(1000);
 
@@ -571,10 +568,9 @@ async function submitUserMessage(content: string) {
           })
 
           return (
-            <BotMessage content={result} />
-            // <BotCard>
-            //   <SolanaPortfolio tokens={result} nfts={result.nfts} balance={result.nativeBalance} address={accountId} />
-            // </BotCard>
+            <BotCard>
+              <SolanaPortfolio tokens={result.tokens} nfts={result.nfts} balance={result.nativeBalance.solana} address={accountId} />
+            </BotCard>
           ) 
         } 
       },
@@ -1088,34 +1084,4 @@ async function getCryptocurrencyPrice(params: CryptoPriceParams): Promise<{price
       console.error(`Error fetching cryptocurrency price: ${error}`);
       return {price: "", delta: ""}
   }
-}
-
-function formatSolanaPortfolio(data: ApiResponse<SolanaTokenProp>): string {
-  let formattedResponse = [];
-
-  // Format native balance
-  const solBalance = (data.nativeBalance.lamports / 1e9).toFixed(9) + " SOL";
-  formattedResponse.push(`Native Balance: ${solBalance}<br>`);
-
-  // Format tokens
-  if (data.tokens && data.tokens.length > 0) {
-      formattedResponse.push("<br>--- Tokens ---<br>");
-      data.tokens.forEach(token => {
-          formattedResponse.push(`Mint: ${token.mint}<br>Owner: ${token.owner}<br>Amount: ${token.uiAmount} (raw: ${token.amountRaw})<br>`);
-      });
-  } else {
-      formattedResponse.push("No tokens found.<br>");
-  }
-
-  // Format NFTs
-  if (data.nfts && data.nfts.length > 0) {
-      formattedResponse.push("<br>--- NFTs ---<br>");
-      data.nfts.forEach(nft => {
-          formattedResponse.push(`Name: ${nft.name}<br>Symbol: ${nft.symbol}<br>Mint: ${nft.mint}<br>Associated Token Address: ${nft.associatedTokenAddress}<br>Amount: ${nft.amount}<br>`);
-      });
-  } else {
-      formattedResponse.push("No NFTs found.<br>");
-  }
-
-  return formattedResponse.join('');
 }
