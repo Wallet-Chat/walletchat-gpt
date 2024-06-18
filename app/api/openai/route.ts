@@ -741,32 +741,47 @@ async function executeFunction(
 }
 
 export const POST = async (req: NextRequest): Promise<Response | void> => {
-  // await initializeAssistant();
+  // await initializeAssistant(); // Uncomment if initialization is required for the assistant
+
+  // Extract the message from the request body
   const { message } = await req.json();
-  const walletAddress = getWalletAddress(req); // Retrieve the wallet address from global state
+
+  // Retrieve the wallet address from the global state associated with the request
+  const walletAddress = getWalletAddress(req);
+
+  // If no wallet address is associated, create a new thread
   if (!walletAddress) {
-    // Default thread ID for those who don't want to connect wallet
+    // Create a new thread with OpenAI
     const thread = await openai.beta.threads.create();
+    // Store the new thread ID
     threadId = thread.id;
-    conversations[threadId] = []; // Initialize as an array if a new thread is created
+    // Initialize the conversation history for this thread
+    conversations[threadId] = [];
   } else {
+    // Retrieve the existing thread ID associated with the wallet address
     threadId = threadIdByWallet[walletAddress];
     if (!threadId) {
       console.log("***** creating new thread for wallet: ", walletAddress);
+      // Create a new thread with OpenAI
       const thread = await openai.beta.threads.create();
+      // Store the new thread ID
       threadId = thread.id;
-      conversations[threadId] = []; // Initialize as an array if a new thread is created
+      // Initialize the conversation history for this thread
+      conversations[threadId] = [];
+      // Map the wallet address to the new thread ID
       threadIdByWallet[walletAddress] = thread.id;
     }
   }
+
+  // If no wallet address, handle conversation using thread ID
   if (!walletAddress) {
     try {
-      // Ensure we're always working with an array
+      // Ensure the conversation history is an array
       if (!Array.isArray(conversations[threadId])) {
         conversations[threadId] = [];
       }
 
-      // Check if there is a pending function call for this thread
+      // Check if there's a pending function call for the thread
       if (threadStatus[threadId] === "pending") {
         return new NextResponse(
           JSON.stringify({
@@ -778,36 +793,38 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
           }
         );
       }
+
+      // Mark the thread as having a pending function call
       threadStatus[threadId] = "pending";
 
       let functionResult;
       let keepProcessing = true;
-      let previousCalls: string[] = []; // Array to keep track of previous function calls and their arguments
+      let previousCalls: string[] = []; // Track previous function calls and arguments
 
-      // while (keepProcessing) {
-      // create a message using the threadID
+      // Create a message for the user input
       const newMessage = await openai.beta.threads.messages.create(threadId, {
         role: "user",
         content: message,
       });
 
+      // Append the new user message to the conversation history
       if (newMessage && newMessage.role === "user") {
-        // Append new user message to history
         conversations[threadId].push({ role: "user", content: newMessage });
       }
 
-      // create a run using the threadID and assistantID
+      // Create a run for the assistant using the thread ID
       const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: ASSISTANT_ID as string,
       });
 
       console.log(run);
 
+      // Retrieve messages for the given run
       const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
 
       console.log("response for runID:", run?.id, retrieve);
 
-      // Unset the pending status after function call is complete
+      // Mark the thread as completed after the function call
       threadStatus[threadId] = "completed";
       return new NextResponse(JSON.stringify(retrieve), {
         status: 200,
@@ -816,7 +833,7 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
     } catch (error) {
       console.error("Error during API call:", error);
 
-      // Unset the pending status if there is an error
+      // Mark the thread as completed if an error occurs
       threadStatus[threadId] = "completed";
 
       return new NextResponse(
@@ -831,13 +848,14 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
       );
     }
   } else {
+    // If a wallet address is provided, handle conversation using the wallet
     try {
-      // Ensure we're always working with an array
+      // Ensure the conversation history is an array
       if (!Array.isArray(conversations[threadId])) {
         conversations[threadId] = [];
       }
 
-      // Check if there is a pending function call for this thread
+      // Check if there's a pending function call for the thread
       if (threadStatus[threadId] === "pending") {
         return new NextResponse(
           JSON.stringify({
@@ -850,66 +868,63 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
         );
       }
 
-      // Mark this thread as having a pending function call
+      // Mark the thread as having a pending function call
       threadStatus[threadId] = "pending";
 
       let functionResult;
       let keepProcessing = true;
-      let previousCalls: string[] = []; // Array to keep track of previous function calls and their arguments
+      let previousCalls: string[] = []; // Track previous function calls and arguments
 
-      // while (keepProcessing) {
-      // create a message using the threadID
-      // if (!walletAddress)
-      //   return new NextResponse(JSON.stringify("connect your wallet"));
-
+      // Create a conversation using the wallet address and message
       let convo = await createConversation(walletAddress, message);
       let initialMessage: any[] = []; // Initialize as an empty array
 
+      // Check if conversation history exists
       if (convo?.conversations) {
-        // Check if conversations is already an array
+        // If already an array, use it; otherwise, convert to an array
         if (Array.isArray(convo.conversations)) {
           initialMessage = convo.conversations;
         } else {
-          // Convert non-array types into an array
           initialMessage = [convo.conversations];
         }
       }
 
       console.log("Initial Message:", initialMessage);
 
-      // Combine the initial message and the new message
+      // Combine the initial message with the new message
       const combinedContent = [...initialMessage, { content: message }];
 
+      // Create a new message for the thread
       const newMessage = await openai.beta.threads.messages.create(threadId, {
         role: "user",
         content: JSON.stringify(combinedContent),
       });
 
+      // Append the new user message to the conversation history
       if (newMessage && newMessage.role === "user") {
-        // Append new user message to history
-
         conversations[threadId].push({ role: "user", content: newMessage });
       }
 
-      // create a run using the threadID and assistantID
+      // Create a run for the assistant using the thread ID
       const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: ASSISTANT_ID as string,
       });
 
       console.log(run);
 
+      // Retrieve messages for the given run
       const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
 
+      // Update the conversation with the latest messages
       const updatedConversation = await updateConversation(
         walletAddress,
         message,
         retrieve
       );
-      // console.log(updatedConversation);
 
       console.log("response for runID:", run?.id, retrieve);
 
-      // Unset the pending status after function call is complete
+      // Mark the thread as completed after the function call
       threadStatus[threadId] = "completed";
       console.log(threadId);
 
@@ -920,7 +935,7 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
     } catch (error) {
       console.error("Error during API call:", error);
 
-      // Unset the pending status if there is an error
+      // Mark the thread as completed if an error occurs
       threadStatus[threadId] = "completed";
 
       return new NextResponse(
@@ -936,259 +951,34 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
     }
   }
 };
-// export const POST = async (req: NextRequest): Promise<Response | void> => {
-//   // await initializeAssistant();
-//   const { message } = await req.json();
-//   const walletAddress = await getWalletAddress(req); // Retrieve the wallet address from global state
-//   if (!walletAddress) {
-//     // Default thread ID for those who don't want to connect wallet
-//     const thread = await openai.beta.threads.create();
-//     threadId = thread.id;
-//     conversations[threadId] = []; // Initialize as an array if a new thread is created
+//to create a conversation on the databse
+async function createConversation(walletAddress: string, message: string) {
+  try {
+    // Check for existing conversation
+    let existingConversation = await prisma.conversation.findFirst({
+      where: { walletAddress: walletAddress },
+    });
 
-//     try {
-//       // Ensure we're always working with an array
-//       if (!Array.isArray(conversations[threadId])) {
-//         conversations[threadId] = [];
-//       }
+    if (existingConversation) {
+      // Return existing conversation if found
+      return existingConversation;
+    } else {
+      // Create a new conversation if not found
+      return await prisma.conversation.create({
+        data: {
+          threadId,
+          conversations: [{ prompt: message }],
+          walletAddress,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Error creating or fetching conversation:", error);
+    throw error; // Propagate the error to handle it in the calling function
+  }
+}
 
-//       // Append new user message to history
-//       conversations[threadId].push({ role: "user", content: message });
-
-//       let functionResult;
-//       let keepProcessing = true;
-//       let previousCalls: string[] = []; // Array to keep track of previous function calls and their arguments
-
-//       while (keepProcessing) {
-//         // OpenAI API call to get response
-//         const completion = await openai.chat.completions.create({
-//           model: "gpt-4o",
-//           messages: conversations[threadId],
-//           functions: functions.map((f) => f.function),
-//           function_call: "auto",
-//         });
-
-//         if (completion.choices && completion.choices[0].message.function_call) {
-//           const functionName = completion.choices[0].message.function_call.name;
-//           const args = JSON.parse(
-//             completion.choices[0].message.function_call.arguments
-//           );
-
-//           // Create a string representation of the function call and its arguments to check for duplicates
-//           const callSignature = `${functionName}(${JSON.stringify(args)})`;
-//           console.log("call signature: ", callSignature);
-//           console.log("previous Calls: ", previousCalls);
-//           if (previousCalls.includes(callSignature)) {
-//             // If this function call with these arguments was previously made, break the loop to avoid infinite recursion
-//             keepProcessing = false;
-//           } else {
-//             // Store the call signature in the history
-//             previousCalls.push(callSignature);
-
-//             // Execute the function and store the result
-//             functionResult = await executeFunction(functionName, args, message);
-
-//             // Append the result of the function execution to the conversation
-//             conversations[threadId].push({
-//               role: "assistant",
-//               content: functionResult,
-//             });
-
-//             // Continue processing by default, unless stopped by duplicate detection
-//             keepProcessing = true;
-//           }
-//         } else {
-//           // If no function call is suggested, append direct text response from OpenAI and stop processing
-//           conversations[threadId].push({
-//             role: "assistant",
-//             content: completion.choices[0].message.content,
-//           });
-//           keepProcessing = false;
-//         }
-//       }
-
-//       // Retrieve the latest assistant message from the conversation
-//       const latestAssistantMessage = conversations[threadId]
-//         .filter((entry: { role: string }) => entry.role === "assistant")
-//         .pop().content;
-
-//       // Return the latest message from the assistant
-//       return new NextResponse(JSON.stringify(latestAssistantMessage), {
-//         status: 200,
-//         headers: { "Content-Type": "text/plain" },
-//       });
-//     } catch (error) {
-//       console.error("Error during API call:", error);
-
-//       // Unset the pending status if there is an error
-//       threadStatus[threadId] = "completed";
-
-//       return new NextResponse(
-//         JSON.stringify({
-//           error: "Failed to get completion from OpenAI",
-//           details: error,
-//         }),
-//         {
-//           status: 500,
-//           headers: { "Content-Type": "application/json" },
-//         }
-//       );
-//     }
-//   } else {
-//     threadId = threadIdByWallet[walletAddress];
-//     if (!threadId) {
-//       console.log("***** creating new thread for wallet: ", walletAddress);
-//       const thread = await openai.beta.threads.create();
-//       threadId = thread.id;
-//       conversations[threadId] = []; // Initialize as an array if a new thread is created
-//       threadIdByWallet[walletAddress] = thread.id;
-//     }
-
-//     try {
-//       // Ensure we're always working with an array
-//       if (!Array.isArray(conversations[threadId])) {
-//         conversations[threadId] = [];
-//       }
-
-//       // Check if there is a pending function call for this thread
-//       if (threadStatus[threadId] === "pending") {
-//         return new NextResponse(
-//           JSON.stringify({
-//             error: "A function call is already in progress for this thread",
-//           }),
-//           {
-//             status: 429, // Too many requests
-//             headers: { "Content-Type": "application/json" },
-//           }
-//         );
-//       }
-
-//       // Mark this thread as having a pending function call
-//       threadStatus[threadId] = "pending";
-
-//       let functionResult;
-//       let keepProcessing = true;
-//       let previousCalls: string[] = []; // Array to keep track of previous function calls and their arguments
-
-//       // while (keepProcessing) {
-//       // create a message using the threadID
-//       // if (!walletAddress)
-//       //   return new NextResponse(JSON.stringify("connect your wallet"));
-
-//       let convo = await createConversation(walletAddress, message);
-//       let initialMessage: any[] = []; // Initialize as an empty array
-
-//       if (convo?.conversations) {
-//         // Check if conversations is already an array
-//         if (Array.isArray(convo.conversations)) {
-//           initialMessage = convo.conversations;
-//         } else {
-//           // Convert non-array types into an array
-//           initialMessage = [convo.conversations];
-//         }
-//       }
-
-//       console.log("Initial Message:", initialMessage);
-
-//       // Combine the initial message and the new message
-//       const combinedContent = [...initialMessage, { content: message }];
-
-//       const newMessage = await openai.beta.threads.messages.create(threadId, {
-//         role: "user",
-//         content: JSON.stringify(combinedContent),
-//       });
-
-//       if (newMessage && newMessage.role === "user") {
-//         // Append new user message to history
-
-//         conversations[threadId].push({ role: "user", content: newMessage });
-//       }
-
-//       // create a run using the threadID and assistantID
-//       const run = await openai.beta.threads.runs.create(threadId, {
-//         assistant_id: ASSISTANT_ID as string,
-//       });
-
-//       console.log(run);
-
-//       const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
-
-//       const updatedConversation = await updateConversation(
-//         walletAddress,
-//         message,
-//         retrieve
-//       );
-//       // console.log(updatedConversation);
-
-//       console.log("response for runID:", run?.id, retrieve);
-
-//       // Unset the pending status after function call is complete
-//       threadStatus[threadId] = "completed";
-//       console.log(threadId);
-
-//       return new NextResponse(JSON.stringify(retrieve), {
-//         status: 200,
-//         headers: { "Content-Type": "text/plain" },
-//       });
-//     } catch (error) {
-//       console.error("Error during API call:", error);
-
-//       // Unset the pending status if there is an error
-//       threadStatus[threadId] = "completed";
-
-//       return new NextResponse(
-//         JSON.stringify({
-//           error: "Failed to get completion from OpenAI",
-//           details: error,
-//         }),
-//         {
-//           status: 500,
-//           headers: { "Content-Type": "application/json" },
-//         }
-//       );
-//     }
-//   }
-// };
-
-// async function updateConversation(
-//   threadId: string,
-//   newMessage: string,
-//   retrieve?: string
-// ) {
-//   try {
-//     // Fetch existing conversation from the database
-//     let existingConversation = await prisma.conversation.findUnique({
-//       where: { threadId },
-//     });
-
-//     const messages: any = { prompt: newMessage, reponse: retrieve };
-//     // If a conversation already exists, append the new message
-//     if (existingConversation) {
-//       const updatedConversations = [
-//         ...((existingConversation.conversations as string[]) || []),
-//         messages,
-//       ];
-//       return await prisma.conversation.update({
-//         where: { threadId },
-//         data: {
-//           conversations: updatedConversations,
-//         },
-//       });
-//     }
-//     // else {
-//     //   // Create a new conversation if it doesn't exist
-//     //   return await prisma.conversation.create({
-//     //     data: {
-//     //       threadId,
-//     //       conversations: [newMessage],
-//     //       threadbywallet: "test",
-//     //     },
-//     //   });
-//     // }
-//   } catch (error) {
-//     console.error("Error saving conversation to database:", error);
-//   }
-// }
+// to update the conversation and its prompt on the database
 async function updateConversation(
   walletAddress: string,
   newMessage: string,
@@ -1227,39 +1017,12 @@ async function addConversation(walletAddress: string, newMessage: string) {
     },
   });
 }
-
 async function getConversations(threadId: string) {
   return await prisma.conversation.findMany({
     where: {
       threadId,
     },
   });
-}
-
-async function createConversation(walletAddress: string, message: string) {
-  try {
-    // Check for existing conversation
-    let existingConversation = await prisma.conversation.findFirst({
-      where: { walletAddress: walletAddress },
-    });
-
-    if (existingConversation) {
-      // Return existing conversation if found
-      return existingConversation;
-    } else {
-      // Create a new conversation if not found
-      return await prisma.conversation.create({
-        data: {
-          threadId,
-          conversations: [{ prompt: message }],
-          walletAddress,
-        },
-      });
-    }
-  } catch (error) {
-    console.error("Error creating or fetching conversation:", error);
-    throw error; // Propagate the error to handle it in the calling function
-  }
 }
 
 interface Conversation {
