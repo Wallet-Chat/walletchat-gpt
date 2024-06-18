@@ -1262,7 +1262,7 @@ const executeDuneQuery = async (functionName: string, args: any) => {
   console.log("execute Dune Query with args: ", args);
   const queryIds: any = {
     executeSolanaTokenOverlap: 3623869,
-    executeSolanaTokenWalletProfitLoss: 3657856,
+    executeSolanaTokenWalletProfitLoss: 3659753,
     executeSolanaTokenOwnerInfo: 3408648,
     executeEthereumTokenOverlap: 3615247,
   };
