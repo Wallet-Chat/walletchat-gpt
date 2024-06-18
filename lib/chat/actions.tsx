@@ -36,6 +36,10 @@ import { PricesSkeleton } from '@/components/crypto/prices-skeleton'
 import { Prices } from '@/components/crypto/prices'
 import { StatsSkeleton } from '@/components/crypto/stats-skeleton'
 import { Stats } from '@/components/crypto/stats'
+import SolanaToken from '@/components/crypto/solana-tokens'
+import SolanaTokenSkeleton from '@/components/crypto/solana-token-skeleton'
+import SolanaNFTs from '@/components/crypto/solana-nfts'
+import SolanaPortfolio from '@/components/crypto/solana-portfolio'
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'
@@ -463,119 +467,282 @@ async function submitUserMessage(content: string) {
           ) 
         } 
       },
-      // show_crypto_purchase: {
-      //   description:
-      //     'Show price and the UI to purchase a cryptocurrency. Use this if the user wants to purchase a cryptocurrency.',
-      //   parameters: z.object({
-      //     symbol: z
-      //       .string()
-      //       .describe(
-      //         'The name or symbol of the cryptocurrency. e.g. DOGE/SOL/BTC.'
-      //       ),
-      //     price: z.number().describe('The price of the crypto.'),
-      //     numberOfShares: z
-      //       .number()
-      //       .describe(
-      //         'The **number of tokens** for a cryptocurrency to purchase. Can be optional if the user did not specify it.'
-      //       )
-      //   }),
-      //   generate: async function* ({ symbol, price, numberOfShares = 100 }) {
-      //     const toolCallId = nanoid()
+      etherscan_api_query: {
+        description: 'Generic function to interact with the Etherscan API. Use this to query the etherscan API.',
+        parameters: z.object({
+          params: z.string().describe("The ENS name of a user e.g, vitalik.eth/mgoesdistance.eth/cyberkevin.eth")
+        }),
 
-      //     if (numberOfShares <= 0 || numberOfShares > 1000) {
-      //       aiState.done({
-      //         ...aiState.get(),
-      //         messages: [
-      //           ...aiState.get().messages,
-      //           {
-      //             id: nanoid(),
-      //             role: 'assistant',
-      //             content: [
-      //               {
-      //                 type: 'tool-call',
-      //                 toolName: 'show_crypto_purchase',
-      //                 toolCallId,
-      //                 args: { symbol, price, numberOfShares }
-      //               }
-      //             ]
-      //           },
-      //           {
-      //             id: nanoid(),
-      //             role: 'tool',
-      //             content: [
-      //               {
-      //                 type: 'tool-result',
-      //                 toolName: 'show_crypto_purchase',
-      //                 toolCallId,
-      //                 result: {
-      //                   symbol,
-      //                   price,
-      //                   numberOfShares,
-      //                   status: 'expired'
-      //                 }
-      //               }
-      //             ]
-      //           },
-      //           {
-      //             id: nanoid(),
-      //             role: 'system',
-      //             content: `[User has selected an invalid amount]`
-      //           }
-      //         ]
-      //       })
+        generate: async function* ({ params } : { params: string }) {
+          
+          const result = await etherscanApiQuery(params);
 
-      //       return <BotMessage content={'Invalid amount'} />
-      //     } else {
-      //       aiState.done({
-      //         ...aiState.get(),
-      //         messages: [
-      //           ...aiState.get().messages,
-      //           {
-      //             id: nanoid(),
-      //             role: 'assistant',
-      //             content: [
-      //               {
-      //                 type: 'tool-call',
-      //                 toolName: 'show_crypto_purchase',
-      //                 toolCallId,
-      //                 args: { symbol, price, numberOfShares }
-      //               }
-      //             ]
-      //           },
-      //           {
-      //             id: nanoid(),
-      //             role: 'tool',
-      //             content: [
-      //               {
-      //                 type: 'tool-result',
-      //                 toolName: 'show_crypto_purchase',
-      //                 toolCallId,
-      //                 result: {
-      //                   symbol,
-      //                   price,
-      //                   numberOfShares
-      //                 }
-      //               }
-      //             ]
-      //           }
-      //         ]
-      //       })
+          await sleep(1000);
 
-      //       return (
-      //         <BotCard>
-      //           <Purchase
-      //             props={{
-      //               numberOfShares,
-      //               symbol,
-      //               price: +price,
-      //               status: 'requires_action'
-      //             }}
-      //           />
-      //         </BotCard>
-      //       )
-      //     }
-      //   }
-      // },
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'etherscan_api_query',
+                    toolCallId,
+                    args: { params }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'etherscan_api_query',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotMessage content={result} />
+          ) 
+        } 
+      },
+      get_solanaAccount_portfolio: {
+        description: 'Get the portfolio of a given solana account. Use this to show the user the portfolio of a given solana account.',
+        parameters: z.object({
+          accountId: z.string().describe("The solana address of the user e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        generate: async function* ({ accountId } : { accountId: string }) {
+          yield (
+            <BotCard>
+              <SolanaTokenSkeleton />
+            </BotCard>
+          )
+          
+          const response = await getSolanaAccountPortfolio(accountId);
+          const result = formatSolanaPortfolio(response)
+          console.log(response)
+          // console.log(result)
+
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaAccount_portfolio',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaAccount_portfolio',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotMessage content={result} />
+            // <BotCard>
+            //   <SolanaPortfolio tokens={result} nfts={result.nfts} balance={result.nativeBalance} address={accountId} />
+            // </BotCard>
+          ) 
+        } 
+      },
+      get_solanaAccount_tokens: {
+        description: 'Get the tokens on a given solana account. Use this to show the user the tokens on a given solana account.',
+        parameters: z.object({
+          accountId: z.string().describe("The solana address of the user e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        generate: async function* ({ accountId } : { accountId: string }) {
+          yield (
+            <BotCard>
+              <SolanaTokenSkeleton />
+            </BotCard>
+          )
+
+          const result = await getSolanaAccountTokens(accountId);
+
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaAccount_tokens',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaAccount_tokens',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <SolanaToken tokens={result} address={accountId} />
+            </BotCard>
+          ) 
+        } 
+      },
+      get_solanaToken_price: {
+        description: 'Get the price of a given solana token. Use this to show the user the price of a given solana token.',
+        parameters: z.object({
+          tokenId: z.string().describe("The address of th solana token e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        generate: async function* ({ tokenId }: { tokenId: string; }) {
+    
+          const result = await getSolanaTokenPrice(tokenId);
+          console.log(result)
+
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaToken_price',
+                    toolCallId,
+                    args: { tokenId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaToken_price',
+                    toolCallId,
+                    result: `[price of ${tokenId} = ${result.price}]`
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotMessage content={JSON.stringify(result.price)} />
+          );
+        },
+      },
+      get_solanaAccount_NFTs: {
+        description: 'Get the NFTs on a given solana account. Use this to show the user the NFTs on a given solana account.',
+        parameters: z.object({
+          accountId: z.string().describe("The solana address of the user e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        generate: async function* ({ accountId } : { accountId: string }) {
+          yield (
+            <BotCard>
+              <SolanaTokenSkeleton />
+            </BotCard>
+          )
+
+          const result = await getSolanaAccountNFTs(accountId);
+
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaAccount_NFTs',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaAccount_NFTs',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <SolanaNFTs nfts={result} address={accountId} />
+            </BotCard>
+          ) 
+        } 
+      },
       getEvents: {
         description:
           'Get crypto events for a given cryptocurrency that describe the crypto activity. e.g DOGE/SOL/ETH/BTC',
@@ -654,6 +821,34 @@ export type UIState = {
 interface CryptoPriceParams {
   symbol: string;
 }
+interface SolanaTokenProp {
+  associatedTokenAddress: any;
+  name: any;
+  symbol: any;
+  amountRaw: any;
+  mint: string;
+  owner: string;
+  amount: string;
+  uiAmount: number;
+}
+interface ApiResponse<T> {
+  nativeBalance: any;
+  tokens?: T[];
+  nfts?: T[];
+}
+interface TokenPrice {
+  symbol: string;
+  price: number;
+}
+interface SolanaNFT {
+  mint: string;
+  metadata: {
+      name: string;
+      symbol: string;
+      uri: string;
+      sellerFeeBasisPoints: number;
+  };
+}
 
 export const AI = createAI<AIState, UIState>({
   actions: {
@@ -664,8 +859,6 @@ export const AI = createAI<AIState, UIState>({
   initialAIState: { chatId: nanoid(), messages: [] },
   onGetUIState: async () => {
     'use server'
-
-    // const session = await auth()
     
     try {
       const address = await axios.get('/api/connectWallet');
@@ -686,8 +879,6 @@ export const AI = createAI<AIState, UIState>({
   },
   onSetAIState: async ({ state }) => {
     'use server'
-
-    // const session = await auth()
     
     try {
       const address = await axios.get('/api/connectWallet');
@@ -771,6 +962,91 @@ async function resolveEnsNameToAddress(ensName: string) {
   }
 }
 
+async function etherscanApiQuery(params: any) {
+  console.log("Received params for Etherscan API:", params);
+
+  const baseUrl = 'https://api.etherscan.io/api';
+  const queryParams = {
+      apikey: process.env.ETHERSCAN_API_KEY, // Assuming API Key is stored in environment variables
+      ...params // Spread additional parameters into the query
+  };
+
+  try {
+      console.log("Sending request to Etherscan with params:", queryParams); // Debug print to check final query parameters
+      const response = await axios.get(baseUrl, { params: queryParams });
+      console.log("Received response from Etherscan:", response.data); // Debug print to check response data
+
+      if (response.status === 200) {
+          //return formatEtherscanResponse({data: response.data.result, params: params})
+          return response.data; // Return the whole response data for flexibility
+      } else {
+          throw new Error(`Etherscan API call failed. Status: ${response.status}`);
+      }
+  } catch (error: unknown) {
+      if (error instanceof Error) {
+          console.error(`Error calling Etherscan API: ${error.message}`);
+      } else {
+          console.error(`An unexpected error occurred: ${error}`);
+      }
+      throw error;
+  }
+}
+
+async function getSolanaAccountNFTs(accountId: string): Promise<ApiResponse<SolanaNFT>> {
+  const url = `https://solana-gateway.moralis.io/account/mainnet/${accountId}/nft`;
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY };
+
+  try {
+      const response = await axios.get<ApiResponse<SolanaNFT>>(url, { headers });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch Solana account NFTs:", error);
+      throw error;
+  }
+}
+
+async function getSolanaTokenPrice(tokenId: string): Promise<TokenPrice> {
+  const url = `https://solana-gateway.moralis.io/token/mainnet/${tokenId}/price`;
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY };
+
+  try {
+      const response = await axios.get<{ price: TokenPrice }>(url, { headers });
+      console.log(response)
+      return response.data.price;
+  } catch (error) {
+      console.error("Failed to fetch Solana token price:", error);
+      throw error;
+  }
+}
+
+async function getSolanaAccountPortfolio(accountId: string): Promise<ApiResponse<SolanaTokenProp>> {
+  const url = `https://solana-gateway.moralis.io/account/mainnet/${accountId}/portfolio`;
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY };
+
+  try {
+      console.log("get Solana portfolio (nfts, native and token balance) for: ", accountId)
+      const response = await axios.get<ApiResponse<SolanaTokenProp>>(url, { headers });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch Solana account tokens:", error);
+      throw error;
+  }
+}
+
+async function getSolanaAccountTokens(accountId: string): Promise<ApiResponse<SolanaTokenProp>> {
+  const url = `https://solana-gateway.moralis.io/account/mainnet/${accountId}/tokens`;
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY };
+
+  try {
+      console.log("get Solana tokens by address for: ", accountId)
+      const response = await axios.get<ApiResponse<SolanaTokenProp>>(url, { headers });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch Solana account tokens:", error);
+      throw error;
+  }
+}
+
 const fetchCryptoNews = async (coin: string): Promise<any> => {
   const url = `https://cryptonews-api.com/api/v1?tickers=${coin}&items=3&token=${process.env.CRYPTO_NEWS_API_KEY}`;
 
@@ -812,4 +1088,34 @@ async function getCryptocurrencyPrice(params: CryptoPriceParams): Promise<{price
       console.error(`Error fetching cryptocurrency price: ${error}`);
       return {price: "", delta: ""}
   }
+}
+
+function formatSolanaPortfolio(data: ApiResponse<SolanaTokenProp>): string {
+  let formattedResponse = [];
+
+  // Format native balance
+  const solBalance = (data.nativeBalance.lamports / 1e9).toFixed(9) + " SOL";
+  formattedResponse.push(`Native Balance: ${solBalance}<br>`);
+
+  // Format tokens
+  if (data.tokens && data.tokens.length > 0) {
+      formattedResponse.push("<br>--- Tokens ---<br>");
+      data.tokens.forEach(token => {
+          formattedResponse.push(`Mint: ${token.mint}<br>Owner: ${token.owner}<br>Amount: ${token.uiAmount} (raw: ${token.amountRaw})<br>`);
+      });
+  } else {
+      formattedResponse.push("No tokens found.<br>");
+  }
+
+  // Format NFTs
+  if (data.nfts && data.nfts.length > 0) {
+      formattedResponse.push("<br>--- NFTs ---<br>");
+      data.nfts.forEach(nft => {
+          formattedResponse.push(`Name: ${nft.name}<br>Symbol: ${nft.symbol}<br>Mint: ${nft.mint}<br>Associated Token Address: ${nft.associatedTokenAddress}<br>Amount: ${nft.amount}<br>`);
+      });
+  } else {
+      formattedResponse.push("No NFTs found.<br>");
+  }
+
+  return formattedResponse.join('');
 }
