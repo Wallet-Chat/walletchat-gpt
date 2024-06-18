@@ -14,56 +14,52 @@ function Header() {
   const { open } = useWeb3Modal()
   const { disconnect } = useDisconnect()
   const { address, isConnected } = useAccount()
-  const [darkMode, setDarkMode] = useState(false);
+  // const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     connectWallet();
   }, [isConnected, address])
 
-  useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      const isDark = localStorage.getItem("theme") === "dark";
-      setDarkMode(isDark);
-      if (isDark) {
-        setDark();
-      } else {
-        setLight();
-      }
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (typeof localStorage !== 'undefined') {
+  //     const isDark = localStorage.getItem("theme") === "dark";
+  //     setDarkMode(isDark);
+  //     if (isDark) {
+  //       setDark();
+  //     } else {
+  //       setLight();
+  //     }
+  //   }
+  // }, []);
 
-  useEffect(() => {
-      if (localStorage.getItem("theme") == "dark") {
-        setDark();
-      } else {
-        setLight();
-      }
-  }, []);
+  // useEffect(() => {
+  //     if (localStorage.getItem("theme") == "dark") {
+  //       setDark();
+  //     } else {
+  //       setLight();
+  //     }
+  // }, []);
 
-  useEffect(() => {
-    connectWallet()
-  }, [isConnected, address])
+  // const changeMode = (e: any) => {
+  //     e.preventDefault();
+  //     if (localStorage.getItem("theme") != "dark") {
+  //       setDark();
+  //     } else {
+  //       setLight();
+  //     }
+  //     setDarkMode(!darkMode);
+  //     toast.success("Theme Changed!");
+  // };
 
-  const changeMode = (e: any) => {
-      e.preventDefault();
-      if (localStorage.getItem("theme") != "dark") {
-        setDark();
-      } else {
-        setLight();
-      }
-      setDarkMode(!darkMode);
-      toast.success("Theme Changed!");
-  };
+  // const setDark = () => {
+  //     localStorage.setItem("theme", "dark");
+  //     document.documentElement.setAttribute("data-theme", "dark");
+  // };
 
-  const setDark = () => {
-      localStorage.setItem("theme", "dark");
-      document.documentElement.setAttribute("data-theme", "dark");
-  };
-
-  const setLight = () => {
-      localStorage.setItem("theme", "light");
-      document.documentElement.setAttribute("data-theme", "light");
-  };
+  // const setLight = () => {
+  //     localStorage.setItem("theme", "light");
+  //     document.documentElement.setAttribute("data-theme", "light");
+  // };
 
   const connectWallet = async () => {
     try {
@@ -87,7 +83,7 @@ function Header() {
           </h1>
         </a>
         <div className="links">
-          <Switch checked={darkMode} onClick={(e) => changeMode(e)} />
+          {/* <Switch checked={darkMode} onClick={(e) => changeMode(e)} /> */}
           <a href="/">
             <p className="link">Home</p>
           </a>
