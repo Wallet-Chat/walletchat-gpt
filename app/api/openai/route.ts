@@ -665,12 +665,21 @@ async function executeFunction(
     case "etherscanQuery":
       result = await etherscanApiQuery(parsedArgs);
       break;
-    case "executeSolanaTokenOverlap":
     case "executeSolanaTokenWalletProfitLoss":
     case "executeSolanaTokenOwnerInfo":
+        const executionId = await executeDuneQuery(functionName, parsedArgs);
+        result = await pollQueryStatus(executionId);
+        break;
+    case "executeSolanaTokenOverlap":
     case "executeEthereumTokenOverlap":
-      const executionId = await executeDuneQuery(functionName, parsedArgs);
-      result = await pollQueryStatus(executionId);
+      const executionIdOverlap = await executeDuneQuery(functionName, parsedArgs);
+      result = await pollQueryStatus(executionIdOverlap);
+      const data = result.result.rows;
+      if (Array.isArray(data)) {
+        result = data
+          .map((item, index) => `${formatTokenOverlap(item)}`)
+          .join("<br>");
+      }
       break;
     case "getSolanaAccountPortfolio":
       console.log("Get Solana Portfolio for: ", parsedArgs);
@@ -1321,12 +1330,6 @@ const getQueryResults = async (executionId: string) => {
     },
   });
   if (response.status === 200) {
-    const data = response.data.result.rows;
-    if (Array.isArray(data)) {
-      return data
-        .map((item, index) => `${formatTokenOverlap(item)}`)
-        .join("<br>");
-    }
     return response.data;
   } else {
     throw new Error(`Failed to fetch results: ${response.status}`);
