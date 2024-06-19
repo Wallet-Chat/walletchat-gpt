@@ -1075,18 +1075,24 @@ async function resolveEnsNameToAddress(ensName: string) {
   }
 }
 
-async function etherscanApiQuery(params: any) {
+async function etherscanApiQuery(params: string): Promise<any> {
   console.log("Received params for Etherscan API:", params);
 
   const baseUrl = 'https://api.etherscan.io/api';
-  const queryParams = {
-      apikey: process.env.ETHERSCAN_API_KEY, // Assuming API Key is stored in environment variables
-      ...params // Spread additional parameters into the query
-  };
+  const apiKey = process.env.ETHERSCAN_API_KEY || '';
+  if (!apiKey) {
+    throw new Error("ETHERSCAN_API_KEY is not set in environment variables");
+  }
+
+  // Append the API key to the query string
+  const queryParams = `${params}&apikey=${apiKey}`;
+
+  // Construct the full URL
+  const fullUrl = `${baseUrl}?${queryParams}`;
 
   try {
-      console.log("Sending request to Etherscan with params:", queryParams); // Debug print to check final query parameters
-      const response = await axios.get(baseUrl, { params: queryParams });
+    console.log("Sending request to Etherscan with URL:", fullUrl); // Debug print to check final URL
+    const response = await axios.get(fullUrl);
       console.log("Received response from Etherscan:", response.data); // Debug print to check response data
 
       if (response.status === 200) {
