@@ -111,6 +111,48 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
   }
 }
 
+// Define the Zod schema for the function parameters with all values as strings
+const etherscanQuerySchema = z.object({
+  module: z.enum(["account", "contract", "proxy"]).describe("The module being accessed (e.g., account, contract, proxy)"),
+  action: z.enum([
+    "balance",
+    "txlist",
+    "tokenbalance",
+    "getsourcecode",
+    "balancemulti",
+    "txlistinternal",
+    "tokentx",
+    "tokennfttx",
+    "token1155tx",
+    "getminedblocks",
+    "txsBeaconWithdrawal",
+    "balancehistory",
+    "getabi",
+    "eth_call"
+  ]).describe("The action to be performed (e.g., balance, txlist, getsourcecode, etc.)"),
+  address: z.string().optional().describe("Ethereum address for the query"),
+  tag: z.enum(["latest", "pending", "earliest"]).optional().describe("The state of the balance (latest or a block number)"),
+  startblock: z.string().optional().describe("The start block number for queries that involve transaction or event lists"),
+  endblock: z.string().optional().describe("The end block number for queries that involve transaction or event lists"),
+  page: z.string().optional().describe("The page number for queries that support pagination"),
+  offset: z.string().optional().describe("The number of results to return per page for queries that support pagination"),
+  sort: z.enum(["asc", "desc"]).optional().describe("The sorting for the results (asc or desc), applicable to transaction and event lists"),
+  contractaddress: z.string().optional().describe("The contract address for token queries (tokentx, tokennfttx, token1155tx)"),
+  blocktype: z.enum(["blocks", "uncles"]).optional().describe("The type of blocks to query for 'getminedblocks'"),
+  blockno: z.string().optional().describe("The specific block number for the 'balancehistory' query"),
+  to: z.string().optional().describe("The address the transaction is directed to. Use in eth_call")
+});
+
+// Function to convert query string to JSON object
+function queryStringToObject(queryString: string): any {
+  const params = new URLSearchParams(queryString);
+  const result: any = {};
+  params.forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
+}
+
 async function submitUserMessage(content: string) {
   'use server'
 
@@ -958,13 +1000,21 @@ async function resolveEnsNameToAddress(ensName: string) {
   }
 }
 
-async function etherscanApiQuery(params: any) {
+async function etherscanApiQuery(params: any): Promise<any> {
   console.log("Received params for Etherscan API:", params);
+
+  // If params is a string, convert it to an object
+  if (typeof params === 'string') {
+    params = queryStringToObject(params);
+  }
+
+  // Validate the parameters using the schema
+  const parsedParams = etherscanQuerySchema.parse(params);
 
   const baseUrl = 'https://api.etherscan.io/api';
   const queryParams = {
       apikey: process.env.ETHERSCAN_API_KEY, // Assuming API Key is stored in environment variables
-      ...params // Spread additional parameters into the query
+      ...parsedParams // Spread additional parameters into the query
   };
 
   try {
