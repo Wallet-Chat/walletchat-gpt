@@ -40,6 +40,7 @@ import SolanaToken from '@/components/crypto/solana-tokens'
 import SolanaTokenSkeleton from '@/components/crypto/solana-token-skeleton'
 import SolanaNFTs from '@/components/crypto/solana-nfts'
 import SolanaPortfolio from '@/components/crypto/solana-portfolio'
+import TokenOverlap from '@/components/crypto/token-overlap'
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'
@@ -517,6 +518,122 @@ async function submitUserMessage(content: string) {
           ) 
         } 
       },
+      get_ethereumToken_overlap: {
+        description: 'Get the ethereum token overlap of a given ethereum account. Use this to show the user the ethereum token overlap of a given ethereum account.',
+        parameters: z.object({
+          accountId: z.string().describe("The address of the token or the name of the token on ethereum e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF/PEPE")
+        }),
+
+        generate: async function* ({ accountId } : { accountId: string }) {
+          yield (
+            <BotCard>
+              <SolanaTokenSkeleton />
+            </BotCard>
+          )
+          console.log("here at the moment")
+          
+          const executionId = await executeDuneQuery("executeEthereumTokenOverlap", accountId);
+          console.log("i got called", executionId);
+          const result = await pollQueryStatus(executionId)
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_ethereumToken_overlap',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_ethereumToken_overlap',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <TokenOverlap tokens={result.tokens} address={accountId} chain="Ethereum" />
+            </BotCard>
+          ) 
+        }
+      },
+      get_solanaToken_overlap: {
+        description: 'Get the solana token overlap of a given solana account. Use this to show the user the solana token overlap of a given solana account.',
+        parameters: z.object({
+          accountId: z.string().describe("The address of the token or name of the token on solana e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        generate: async function* ({ accountId } : { accountId: string }) {
+          yield (
+            <BotCard>
+              <SolanaTokenSkeleton />
+            </BotCard>
+          )
+          
+          const executionId = await executeDuneQuery("executeSolanaTokenOverlap", accountId);
+          const result = await pollQueryStatus(executionId)
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaToken_overlap',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaToken_overlap',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <TokenOverlap tokens={result.tokens} address={accountId} chain="Solana" />
+            </BotCard>
+          ) 
+        }
+      },
       get_solanaAccount_portfolio: {
         description: 'Get the portfolio of a given solana account. Use this to show the user the portfolio of a given solana account.',
         parameters: z.object({
@@ -988,6 +1105,73 @@ async function etherscanApiQuery(params: any) {
   }
 }
 
+const executeDuneQuery = async (functionName: string, args: any) => {
+  console.log("execute Dune Query with args: ", args)
+  const queryIds: any = {
+      executeSolanaTokenOverlap: 3623869,
+      executeSolanaTokenWalletProfitLoss: 3657856,
+      executeSolanaTokenOwnerInfo: 3408648,
+      executeEthereumTokenOverlap: 3615247
+  };
+  const queryId = queryIds[functionName];
+  const endpoint = `https://api.dune.com/api/v1/query/${queryId}/execute`;
+  const payload = {
+      query_parameters: args,
+      performance: "medium"
+  };
+  const response = await axios.post(endpoint, payload, {
+      headers: {
+          'x-dune-api-key': process.env.DUNE_API_KEY
+      }
+  });
+  if (response.status === 200) {
+      return response.data.execution_id;
+  } else {
+      throw new Error(`Failed to execute query. Status code: ${response.status}`);
+  }
+};
+
+const pollQueryStatus = async (executionId: string) => {
+  const endpoint = `https://api.dune.com/api/v1/execution/${executionId}/status`;
+  try {
+      while (true) {
+          const response = await axios.get(endpoint, {
+              headers: {
+                  'x-dune-api-key': process.env.DUNE_API_KEY
+              }
+          });
+          const data = response.data;
+          if (data.state === "QUERY_STATE_COMPLETED") {
+              return await getQueryResults(executionId);
+          } else if (["QUERY_STATE_FAILED", "QUERY_STATE_CANCELLED", "QUERY_STATE_EXPIRED"].includes(data.state)) {
+              throw new Error(`Query failed with state: ${data.state}`);
+          }
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Poll every 2 seconds
+      }
+  } catch (error) {
+      console.error(`Error while polling query status: ${error}`);
+      throw error;
+  }
+};
+
+const getQueryResults = async (executionId: string) => {
+  const endpoint = `https://api.dune.com/api/v1/execution/${executionId}/results`;
+  const response = await axios.get(endpoint, {
+      headers: {
+          'x-dune-api-key': process.env.DUNE_API_KEY
+      }
+  });
+  if (response.status === 200) {
+      const data = response.data.result.rows;
+      if(Array.isArray(data)) {
+          return data.map((item, index) => `${formatTokenOverlap(item)}`).join('<br>');
+      }
+      return response.data;
+  } else {
+      throw new Error(`Failed to fetch results: ${response.status}`);
+  }
+};
+
 async function getSolanaAccountNFTs(accountId: string): Promise<ApiResponse<SolanaNFT>> {
   const url = `https://solana-gateway.moralis.io/account/mainnet/${accountId}/nft`;
   const headers = { 'X-API-Key': process.env.MORALIS_API_KEY };
@@ -1084,4 +1268,12 @@ async function getCryptocurrencyPrice(params: CryptoPriceParams): Promise<{price
       console.error(`Error fetching cryptocurrency price: ${error}`);
       return {price: "", delta: ""}
   }
+}
+
+function formatTokenOverlap(token: any) {
+  return `
+  Contract Address: ${token.contract_address}</br>
+  Holder Count: ${token.holder_count}</br>
+  Token Symbol: ${token.token_symbol}</br>
+  `.trim().split("\n").join("  ");
 }
