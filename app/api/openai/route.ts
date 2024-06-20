@@ -761,7 +761,13 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
     // Initialize the conversation history for this thread
     conversations[threadId] = [];
   } else {
-    // Retrieve the existing thread ID associated with the wallet address
+    // KC -Kalio comment
+    // to Retrieve the existing thread ID associated with the wallet address since it passes the wallet test we use Prisma to fetch the
+    // threadID using get the wallet Address
+    const savedThreadID = await getThreadID(walletAddress);
+    console.log('below is the thread ID for theis conversation')
+    console.log(savedThreadID);
+
     threadId = threadIdByWallet[walletAddress];
     if (!threadId) {
       console.log("***** creating new thread for wallet: ", walletAddress);
@@ -851,6 +857,7 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
       );
     }
   } else {
+    // KC- so the code above handles the conversation like before but the one below have some databse actions
     // If a wallet address is provided, handle conversation using the wallet
     try {
       // Ensure the conversation history is an array
@@ -879,10 +886,12 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
       let previousCalls: string[] = []; // Track previous function calls and arguments
 
       // Create a conversation using the wallet address and message
+      // KC: the createConversationdatabse ops save to the database new conversation using the wallet address and the prompt message
       let convo = await createConversation(walletAddress, message);
       let initialMessage: any[] = []; // Initialize as an empty array
 
       // Check if conversation history exists
+      // KC - here if the wallet address has a conversation(a return statment from the databse) it passes all as the initial conversation to the SDK.
       if (convo?.conversations) {
         // If already an array, use it; otherwise, convert to an array
         if (Array.isArray(convo.conversations)) {
@@ -895,6 +904,7 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
       console.log("Initial Message:", initialMessage);
 
       // Combine the initial message with the new message
+      // KC: at this point we add the previous conversation to the new one and pass it to OPENAI
       const combinedContent = [...initialMessage, { content: message }];
 
       // Create a new message for the thread
@@ -919,6 +929,7 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
       const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
 
       // Update the conversation with the latest messages
+      // KC: so updateConversation updates the prompts with it's corresponding response from OPENAI to the intial Prompt
       await updateConversation(walletAddress, message, retrieve);
 
       console.log("response for runID:", run?.id, retrieve);
@@ -950,7 +961,7 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
     }
   }
 };
-//to create a conversation on the databse
+// KC: to create a conversation on the databse
 async function createConversation(walletAddress: string, message: string) {
   try {
     // Check for existing conversation
@@ -1027,6 +1038,9 @@ async function getThreadID(walletAddress: string) {
   return await prisma.conversation.findFirst({
     where: {
       walletAddress,
+    },
+    select: {
+      threadId: true,
     },
   });
 }
