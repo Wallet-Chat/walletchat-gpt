@@ -7,10 +7,10 @@ export default function TransactionList({ transactions, address } : { transactio
   return (
     <div className="w-full max-w-3xl mx-auto">
       <div className="bg-gray-900 text-white p-4 rounded-t-lg">
-        <h1 className="text-2xl font-bold">The Solana account: {`${address?.slice(0, 7)}...${address?.slice(35)}`} holds the following tokens:</h1>
+        <h1 className="text-lg font-bold"></h1>
       </div>
       <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow-lg">
-        <ScrollArea className="max-h-[400px] overflow-auto">
+        <ScrollArea className="max-h-[400px] overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -41,12 +41,12 @@ export default function TransactionList({ transactions, address } : { transactio
                 <TableRow key={index}>
                   <TableCell>{trx?.blockNumber}</TableCell>
                   <TableCell>{trx?.timeStamp}</TableCell>
-                  <TableCell>{trx?.hash}</TableCell>
+                  <TableCell>{`${trx?.hash?.slice(0, 7)}...${trx.hash?.slice(35)}`}</TableCell>
                   <TableCell>{trx?.nonce}</TableCell>
-                  <TableCell>{trx?.blockHash}</TableCell>
+                  <TableCell>{`${trx?.blockHash?.slice(0, 7)}...${trx.blockHash?.slice(35)}`}</TableCell>
                   <TableCell>{trx?.transactionIndex}</TableCell>
-                  <TableCell>{trx?.from}</TableCell>
-                  <TableCell>{trx?.to}</TableCell>
+                  <TableCell>{`${trx?.from?.slice(0, 7)}...${trx.from?.slice(35)}`}</TableCell>
+                  <TableCell>{`${trx?.to?.slice(0, 7)}...${trx.to?.slice(35)}`}</TableCell>
                   <TableCell>{trx?.value}</TableCell>
                   <TableCell>{trx?.gas}</TableCell>
                   <TableCell>{trx?.gasPrice}</TableCell>

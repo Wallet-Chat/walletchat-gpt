@@ -7,7 +7,7 @@ export default function SolanaToken({ tokens, address } : { tokens: any, address
   return (
     <div className="w-full max-w-3xl mx-auto">
       <div className="bg-gray-900 text-white p-4 rounded-t-lg">
-        <h1 className="text-2xl font-bold">The Solana account: {`${address?.slice(0, 7)}...${address?.slice(35)}`} holds the following tokens:</h1>
+        <h1 className="text-lg font-bold">The Solana account: {`${address?.slice(0, 7)}...${address?.slice(35)}`} holds the following tokens:</h1>
       </div>
       <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow-lg">
         <ScrollArea className="max-h-[400px] overflow-auto">

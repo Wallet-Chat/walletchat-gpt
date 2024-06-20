@@ -15,7 +15,7 @@ interface Price {
 export function Price({ symbol, price, delta }: Price) {
   const [aiState, setAIState] = useAIState()
   const id = useId()
-
+  
   const [priceAtTime, setPriceAtTime] = useState({
     time: '00:00',
     value: price.toFixed(2),

@@ -5,7 +5,7 @@ export default function SolanaPortfolio({ tokens, nfts, balance, address } : { t
   return (
     <div className="flex flex-col w-full min-h-screen bg-gray-100 dark:bg-gray-950">
         <div className="bg-gray-900 text-white p-4 rounded-t-lg">
-            <h1 className="text-2xl font-bold">The portfolio of the Solana account: {`${address?.slice(0, 7)}...${address?.slice(35)}`} includes the following:</h1>
+            <h1 className="text-lg font-bold">The portfolio of the Solana account: {`${address?.slice(0, 7)}...${address?.slice(35)}`} includes the following:</h1>
         </div>
       <main className="container mx-auto px-4 py-8 md:px-6 md:py-10 flex-1 grid gap-8">
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6">

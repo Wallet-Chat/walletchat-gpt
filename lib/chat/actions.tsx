@@ -131,8 +131,11 @@ async function submitUserMessage(content: string) {
     ]
   })
 
+  let textStream: undefined | ReturnType<typeof createStreamableValue<string>>
+  let textNode: undefined | React.ReactNode
+
   const result = await generateText({
-    model: openai('gpt-4o'),
+    model: openai('gpt-4o-2024-05-13'),
     system: `
       You are a cryptocurrency analyst conversation bot, use the provided functions to answer questions as needed.
       You and the user can discuss cryptocurrency prices and the user can adjust the amount of crypto they want to buy, or place an order, in the UI.
@@ -166,6 +169,477 @@ async function submitUserMessage(content: string) {
       }))
     ],
     tools: {
+      get_crypto_price: tool({
+        description:
+          "Get the current price of a given cryptocurrency. Use this to show the price to the user.",
+        parameters: z.object({
+          symbol: z
+            .string()
+            .describe("The name or symbol of the cryptocurrency. e.g. BTC/ETH/SOL.")
+        }),
+        execute: async ({ symbol }: { symbol: string; }) => {
+
+          const result = await getCryptocurrencyPrice({ symbol });
+          const price = Number(result.price);
+          const delta = Number(result.delta);
+
+          const newResult = { price, delta, symbol }
+
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_crypto_price',
+                    toolCallId,
+                    args: { symbol }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_crypto_price',
+                    toolCallId,
+                    result: newResult
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <Price symbol={symbol} price={price} delta={delta} />
+            </BotCard>
+          );
+        },
+      }),
+      get_crypto_stats: tool({
+        description: "Get the market stats of a given cryptocurrency. Use this to show the stats to the user.",
+        parameters: z.object({
+          slug: z.string().describe("The name of the cryptocurrency in lowercase e.g, bitboin/solana/ethereum")
+        }),
+        execute: async ({ slug }: { slug: string }) => {
+
+            const url = new URL("https://api.coinmarketcap.com/data-api/v3/cryptocurrency/detail");
+
+            // set the query params which are required
+            url.searchParams.append("slug", slug);
+            url.searchParams.append("limit", "1");
+            url.searchParams.append("sortBy", "market_cap");
+
+            const response = await fetch(url, {
+              //@ts-ignore
+              headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                "X-CMC_PRO_API_KEY": process.env.COINMARKETCAP_API_KEY,
+              }
+            });
+
+            if (!response.ok) {
+                return <BotMessage content="Crypto not found!" />;
+            }
+
+            const toolCallId = nanoid()
+
+            const res = await response.json() as {
+                data: {
+                id: number;
+                name: string;
+                symbol: string;
+                volume: number;
+                volumeChangePercentage24h: number;
+                statistics: {
+                    rank: number;
+                    totalSupply: number;
+                    marketCap: number;
+                    marketCapDominance: number;
+                },
+                };
+            };
+
+            const data = res.data;
+            const stats = res.data.statistics;
+
+            const marketStats = {
+                name: data.name,
+                volume: data.volume,
+                volumeChangePercentage24h: data.volumeChangePercentage24h,
+                rank: stats.rank,
+                marketCap: stats.marketCap,
+                totalSupply: stats.totalSupply,
+                dominance: stats.marketCapDominance,
+            };
+
+            await sleep(1000);
+
+            aiState.done({
+              ...aiState.get(),
+              messages: [
+                ...aiState.get().messages,
+                {
+                  id: nanoid(),
+                  role: 'assistant',
+                  content: [
+                    {
+                      type: 'tool-call',
+                      toolName: 'get_crypto_stats',
+                      toolCallId,
+                      args: { slug }
+                    }
+                  ]
+                },
+                {
+                  id: nanoid(),
+                  role: 'tool',
+                  content: [
+                    {
+                      type: 'tool-result',
+                      toolName: 'get_crypto_stats',
+                      toolCallId,
+                      result: marketStats
+                    }
+                  ]
+                }
+              ]
+            })
+
+            return (
+                <BotCard>
+                  <Stats {...marketStats} />
+                </BotCard>
+            );
+        }
+      }),
+      get_ethereumToken_overlap: tool({
+        description: 'Get the ethereum token overlap of a given ethereum account. Use this to show the user the ethereum token overlap of a given ethereum account.',
+        parameters: z.object({
+          accountId: z.string().describe("The address of the token or the name of the token on ethereum e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF/PEPE")
+        }),
+
+        execute: async ({ accountId } : { accountId: string }) => {
+      
+          const executionId = await executeDuneQuery("executeEthereumTokenOverlap", accountId);
+          const result = await pollQueryStatus(executionId)
+          const newResult = { tokens: result?.tokens, accountId }
+
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_ethereumToken_overlap',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_ethereumToken_overlap',
+                    toolCallId,
+                    result: newResult
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <TokenOverlap tokens={result.tokens} address={accountId} chain="Ethereum" />
+            </BotCard>
+          ) 
+        }
+      }),
+      get_solanaAccount_portfolio: tool({
+        description: 'Get the portfolio of a given solana account. Use this to show the user the portfolio of a given solana account.',
+        parameters: z.object({
+          accountId: z.string().describe("The solana address of the user e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        execute: async ({ accountId } : { accountId: string }) => {
+          
+          const result = await getSolanaAccountPortfolio(accountId);
+          const newResult = {result, accountId}
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaAccount_portfolio',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaAccount_portfolio',
+                    toolCallId,
+                    result: newResult
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <SolanaPortfolio tokens={result.tokens} nfts={result.nfts} balance={result.nativeBalance.solana} address={accountId} />
+            </BotCard>
+          ) 
+        } 
+      }),
+      get_solanaAccount_tokens: tool({
+        description: 'Get the tokens on a given solana account. Use this to show the user the tokens on a given solana account.',
+        parameters: z.object({
+          accountId: z.string().describe("The solana address of the user e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        execute: async ({ accountId } : { accountId: string }) => {
+      
+          const result = await getSolanaAccountTokens(accountId);
+          const newResult = { result, accountId }
+
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaAccount_tokens',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaAccount_tokens',
+                    toolCallId,
+                    result: newResult
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <SolanaToken tokens={result} address={accountId} />
+            </BotCard>
+          ) 
+        } 
+      }),
+      get_solanaAccount_NFTs: tool({
+        description: 'Get the NFTs on a given solana account. Use this to show the user the NFTs on a given solana account.',
+        parameters: z.object({
+          accountId: z.string().describe("The solana address of the user e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        execute: async ({ accountId } : { accountId: string }) => {
+
+          const result = await getSolanaAccountNFTs(accountId);
+          const newResult = { result, accountId }
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaAccount_NFTs',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaAccount_NFTs',
+                    toolCallId,
+                    result: newResult
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <SolanaNFTs nfts={result} address={accountId} />
+            </BotCard>
+          ) 
+        } 
+      }),
+      get_solanaToken_price: tool({
+        description: 'Get the price of a given solana token. Use this to show the user the price of a given solana token.',
+        parameters: z.object({
+          tokenId: z.string().describe("The address of th solana token e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        execute: async ({ tokenId }: { tokenId: string }) => {
+    
+          const result = await getSolanaTokenPrice(tokenId);
+          console.log(result)
+
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaToken_price',
+                    toolCallId,
+                    args: { tokenId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaToken_price',
+                    toolCallId,
+                    result: `[price of ${tokenId} = ${result.price}]`
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotMessage content={JSON.stringify(result.price)} />
+          );
+        },
+      }),
+      getEvents: tool({
+        description:
+          'Get crypto events for a given cryptocurrency that describe the crypto activity. e.g DOGE/SOL/ETH/BTC',
+        parameters: z.object({
+          symbol: z.string().describe("The name or symbol of the cryptocurrency. e.g. DOGE/SOL/BTC. "),
+        }),
+        execute: async ({ symbol }) => {
+          
+          const result = await fetchCryptoNews(symbol)
+          const newResult = { result: result.data, symbol }
+
+          await sleep(1000)
+
+          const toolCallId = nanoid()
+
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'getEvents',
+                    toolCallId,
+                    args: { symbol }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'getEvents',
+                    toolCallId,
+                    result: newResult
+                  }
+                ]
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <Events props={result.data} />
+            </BotCard>
+          )
+        }
+      }),
       resolve_ensName_toAddress: tool({
         description: 'Get the wallet address of a given ENS name. Use this to show the user the address of a given ENS name.',
         parameters: z.object({
@@ -225,6 +699,7 @@ async function submitUserMessage(content: string) {
         execute: async ({ params } : { params: string }) => {
           
           const result = await etherscanApiQuery(params);
+          const newResult = { result, params };
 
           await sleep(1000);
 
@@ -254,7 +729,7 @@ async function submitUserMessage(content: string) {
                     type: 'tool-result',
                     toolName: 'etherscan_api_query',
                     toolCallId,
-                    result: result
+                    result: newResult
                   }
                 ]
               }
@@ -272,10 +747,172 @@ async function submitUserMessage(content: string) {
     maxToolRoundtrips: 5, // allow up to 5 tool roundtrips
   });
 
-  console.log("the result:", result.text)
-  return {
-    id: nanoid(),
-    display: result.text
+  const newResult = await streamUI({
+    model: openai('gpt-4o-2024-05-13'),
+    initial: <SpinnerMessage />,
+    system: `You are a cryptocurrency analyst conversation bot, use the provided functions to answer questions as needed.
+      You and the user can discuss cryptocurrency prices and the user can adjust the amount of crypto they want to buy, or place an order, in the UI.
+      
+      Messages inside [] means that it's a UI element or a user event. For example:
+      - "[Price of BTC = 696969]" means that an interface of the cryptocurrency price of BTC is shown to the user.
+      - "[Stats of BTC]" means that the interface of the cryptocurrency stats of BTC is shown to the user.
+      - "[User has changed the amount of SOL to 10]" means that the user has changed the amount of SOL to 10 in the UI.
+      - For token name to contract address mapping search with Bing and use the token with the largest market cap. For example, when asked (find the token overlap for PEPE) use bing to find the contract address for PEPE.
+      - Never tell me how to search for information myself choose from the functions first, then do a web search if not matched
+      - API request timeout is 360 seconds 
+      - If you encounter an error please try again until you find a working solution
+      - Never use contract module for Etherscan function
+      - for Etherscan function calls (), use proxy module, and eth_call action, take the first 32 bits of the keccak hash of the function and any arguments, for example owner() function comes out to 0x8da5cb5    - If the Dune API is taking multiple tries, continue trying until a result is reached, do not allow for other queries until you have a resolution for the current query.      - Always return the results from a Dune API query in a sorted order, the results should be returned sorted already so do not re-arrange the results.  For example, if the results return a list of token holders, show the holder count and keep it sorted by highest holder count first.
+      - Always adjust token values according to their decimal places before displaying them. For tokens like USDC that have 6 decimal places, divide the token amount by 10^6 to convert it into a human-readable format. Apply this conversion uniformly to all cryptocurrency token amounts to ensure accuracy in financial representations.
+
+      If the user requests purchasing a stock, call \`show_stock_purchase_ui\` to show the purchase UI.
+      If the user just wants the price, call \`show_stock_price\` to show the price. if that fails do a web search with whatever engine you have access to
+      If the user wants the market cap or stats of a given cryptocurrency, call \`get_crypto_stats\` to show the stats.
+      If you want to show trending stocks, call \`list_stocks\`.
+      If you want to show events, call \`get_events\`.
+      If the user wants to sell stock, or complete another impossible task, respond that you are a demo and cannot do that.
+      
+      Besides that, you can also chat with users and do some calculations if needed.`,
+    messages: [
+      ...aiState.get().messages.map((message: any) => ({
+        role: message.role,
+        content: message.content,
+        name: message.name
+      }))
+    ],
+    text: ({ content, done, delta }) => {
+      if (!textStream) {
+        textStream = createStreamableValue('')
+        textNode = <BotMessage content={textStream.value} />
+      }
+
+      if (done) {
+        textStream.done()
+        aiState.done({
+          ...aiState.get(),
+          messages: [
+            ...aiState.get().messages,
+            {
+              id: nanoid(),
+              role: 'assistant',
+              content
+            }
+          ]
+        })
+      } else {
+        textStream.update(delta)
+      }
+
+      return textNode
+    },
+  })
+
+  const lastToolCall: any = aiState.get().messages.findLast((role) => role.role === "tool");
+
+  const lastToolCallName = lastToolCall?.content[0]?.toolName
+  const toolResult = lastToolCall?.content[0]?.result
+
+  console.log("tool", lastToolCall?.content[0]?.toolName) 
+  console.log("tool result", lastToolCall?.content[0]?.result) 
+
+  if(lastToolCallName === "resolve_ensName_toAddress") {
+    return {
+      id: nanoid(),
+      display: <BotMessage content={result.text} />
+    }
+  } else if (lastToolCallName === "etherscan_api_query") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotCard>
+          <TransactionList transactions={toolResult?.result?.result} address={toolResult?.params} />
+        </BotCard>
+      )
+    }
+  } else if (lastToolCallName === "get_ethereumToken_overlap") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotCard>
+          <TokenOverlap tokens={toolResult?.tokens} address={toolResult?.accountId} chain="Ethereum" />
+        </BotCard>
+      )
+    }
+  } else if (lastToolCallName === "get_crypto_price") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotCard>
+          <Price symbol={toolResult?.symbol} price={toolResult?.price} delta={toolResult?.delta} />
+        </BotCard>
+      )
+    }
+  } else if (lastToolCallName === "get_crypto_stats") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotCard>
+          <Stats {...toolResult} />
+        </BotCard>
+      )
+    }
+  } else if (lastToolCallName === "getEvents") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotCard>
+          <Events props={toolResult.result} />
+        </BotCard>
+      )
+    }
+  } else if (lastToolCallName === "get_solanaToken_overlap") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotCard>
+          <TokenOverlap tokens={result.text} address={""} chain="Solana" />
+        </BotCard>
+      )
+    }
+  } else if (lastToolCallName === "get_solanaAccount_portfolio") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotCard>
+          <SolanaPortfolio tokens={toolResult?.result?.tokens} nfts={toolResult?.result?.nfts} balance={toolResult?.result?.nativeBalance.solana} address={toolResult?.accountId} />
+        </BotCard>
+      )
+    }
+  } else if (lastToolCallName === "get_solanaAccount_tokens") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotCard>
+          <SolanaToken tokens={toolResult?.result} address={toolResult?.accountId} />
+        </BotCard>
+      )
+    }
+  } else if (lastToolCallName === "get_solanaAccount_NFTs") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotCard>
+          <SolanaNFTs nfts={toolResult?.result} address={toolResult?.accountId} />
+        </BotCard>
+      )
+    }
+  } else if (lastToolCallName === "get_solanaToken_price") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotMessage content={toolResult} />
+      )
+    }
+  } else {
+    return {
+      id: nanoid(),
+      display: newResult.value
+    }
   }
 }
 // async function submitUserMessage(content: string) {
@@ -1280,7 +1917,7 @@ async function etherscanApiQuery(params: string): Promise<any> {
 }
 
 const executeDuneQuery = async (functionName: string, args: any) => {
-  console.log("execute Dune Query with args: ", args)
+  console.log("execute Dune Query with args: ",functionName, args)
   const queryIds: any = {
       executeSolanaTokenOverlap: 3623869,
       executeSolanaTokenWalletProfitLoss: 3657856,

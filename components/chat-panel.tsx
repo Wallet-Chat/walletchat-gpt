@@ -57,8 +57,8 @@ export function ChatPanel({
   const exampleMessages = [
     {
       heading: 'What are the',
-      subheading: 'trending memecoins today?',
-      message: `What are the trending memecoins today?`
+      subheading: 'last 2 transactions on vitalik.eth?',
+      message: `What are the last 2 transactions on vitalik.eth?`
     },
     {
       heading: 'What is the price of',
