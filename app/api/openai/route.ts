@@ -667,12 +667,15 @@ async function executeFunction(
       break;
     case "executeSolanaTokenWalletProfitLoss":
     case "executeSolanaTokenOwnerInfo":
-        const executionId = await executeDuneQuery(functionName, parsedArgs);
-        result = await pollQueryStatus(executionId);
-        break;
+      const executionId = await executeDuneQuery(functionName, parsedArgs);
+      result = await pollQueryStatus(executionId);
+      break;
     case "executeSolanaTokenOverlap":
     case "executeEthereumTokenOverlap":
-      const executionIdOverlap = await executeDuneQuery(functionName, parsedArgs);
+      const executionIdOverlap = await executeDuneQuery(
+        functionName,
+        parsedArgs
+      );
       result = await pollQueryStatus(executionIdOverlap);
       const data = result.result.rows;
       if (Array.isArray(data)) {
@@ -916,11 +919,7 @@ export const POST = async (req: NextRequest): Promise<Response | void> => {
       const retrieve = await checkStatusAndReturnMessages(threadId, run?.id);
 
       // Update the conversation with the latest messages
-      const updatedConversation = await updateConversation(
-        walletAddress,
-        message,
-        retrieve
-      );
+      await updateConversation(walletAddress, message, retrieve);
 
       console.log("response for runID:", run?.id, retrieve);
 
@@ -1021,6 +1020,13 @@ async function getConversations(threadId: string) {
   return await prisma.conversation.findMany({
     where: {
       threadId,
+    },
+  });
+}
+async function getThreadID(walletAddress: string) {
+  return await prisma.conversation.findFirst({
+    where: {
+      walletAddress,
     },
   });
 }
