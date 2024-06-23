@@ -27,7 +27,7 @@ import {
   nanoid
 } from '@/lib/utils'
 import { saveChat } from '@/app/actions'
-import { SpinnerMessage, UserMessage } from '@/components/crypto/message'
+import { BotPlainMessage, SpinnerMessage, UserMessage } from '@/components/crypto/message'
 import { Chat, Message } from '@/lib/types'
 import axios from 'axios'
 import { PriceSkeleton } from '@/components/crypto/price-skeleton'
@@ -151,12 +151,14 @@ async function submitUserMessage(content: string) {
       - Never use contract module for Etherscan function
       - for Etherscan function calls (), use proxy module, and eth_call action, take the first 32 bits of the keccak hash of the function and any arguments, for example owner() function comes out to 0x8da5cb5    - If the Dune API is taking multiple tries, continue trying until a result is reached, do not allow for other queries until you have a resolution for the current query.      - Always return the results from a Dune API query in a sorted order, the results should be returned sorted already so do not re-arrange the results.  For example, if the results return a list of token holders, show the holder count and keep it sorted by highest holder count first.
       - Always adjust token values according to their decimal places before displaying them. For tokens like USDC that have 6 decimal places, divide the token amount by 10^6 to convert it into a human-readable format. Apply this conversion uniformly to all cryptocurrency token amounts to ensure accuracy in financial representations.
-
+      
+      If the user request for the ethereum token ovelap, use Bing and use the token with the largest market cap. For example, when asked (find the token overlap for PEPE) use bing to find the contract address for PEPE, and then call \`get_ethereumToken_overlap\` and pass in the address you found as the parameter.
+      If the user request for the solana token ovelap, use Bing and use the token with the largest market cap. For example, when asked (find the token overlap for DADDY) use bing to find the contract address for DADDY, and then call \`get_solanaToken_overlap\` and pass in the address you found as the parameter.
       If the user requests purchasing a stock, call \`show_stock_purchase_ui\` to show the purchase UI.
-      If the user just wants the price, call \`show_stock_price\` to show the price. if that fails do a web search with whatever engine you have access to
+      If the user just wants the price of a cryptocurrency, call \`get_crypto_price\` to show the price. if that fails do a web search with whatever engine you have access to
       If the user wants the market cap or stats of a given cryptocurrency, call \`get_crypto_stats\` to show the stats.
       If you want to show trending stocks, call \`list_stocks\`.
-      If you want to show events, call \`get_events\`.
+      If you want to show events or trending new of a cryptocurrency, call \`get_events\`.
       If the user wants to sell stock, or complete another impossible task, respond that you are a demo and cannot do that.
       
       Besides that, you can also chat with users and do some calculations if needed.
@@ -332,10 +334,10 @@ async function submitUserMessage(content: string) {
         }),
 
         execute: async ({ accountId } : { accountId: string }) => {
-      
-          const executionId = await executeDuneQuery("executeEthereumTokenOverlap", accountId);
+          
+          const executionId = await executeDuneQuery("executeEthereumTokenOverlap", {token_address: accountId});
           const result = await pollQueryStatus(executionId)
-          const newResult = { tokens: result?.tokens, accountId }
+          const newResult = { tokens: result, accountId }
 
           await sleep(1000);
 
@@ -372,11 +374,201 @@ async function submitUserMessage(content: string) {
             ]
           })
 
-          return (
-            <BotCard>
-              <TokenOverlap tokens={result.tokens} address={accountId} chain="Ethereum" />
-            </BotCard>
-          ) 
+          return newResult
+        }
+      }),
+      get_solanaTokenverlap: tool({
+        description: 'Get the solana token overlap of a given solana account. Use this to show the user the solana token overlap of a given solana account.',
+        parameters: z.object({
+          accountId: z.string().describe("The address of the token or name of the token on solana e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        execute: async ({ accountId } : { accountId: string }) => {
+          
+          const executionId = await executeDuneQuery("executeSolanaTokenOverlap", {token_address: accountId});
+          const result = await pollQueryStatus(executionId)
+          const newResult = { tokens: result, accountId }
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaToken_overlap',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaToken_overlap',
+                    toolCallId,
+                    result: newResult
+                  }
+                ]
+              }
+            ]
+          })
+
+          return newResult
+        }
+      }),
+      get_solanaToken_wallet_profit_and_loss: tool({
+        description: 'Get the profit and loss of a given solana account. Use this to show the user the profit and loss of a given solana account.',
+        parameters: z.object({
+          accountId: z.string().describe("The wallet address of the solana account e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        execute: async ({ accountId } : { accountId: string }) => {
+          
+          const executionId = await executeDuneQuery("executeSolanaTokenWalletProfitLoss", {wallet_address: accountId});
+          const result = await pollQueryStatus(executionId)
+          const newResult = { tokens: result, accountId }
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaToken_wallet_profit_and_loss',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaToken_wallet_profit_and_loss',
+                    toolCallId,
+                    result: newResult
+                  }
+                ]
+              }
+            ]
+          })
+
+          return newResult
+        }
+      }),
+      get_solanaToken_ownerInfo: tool({
+        description: 'Get the owner info of a given solana token. Use this to show the user the owner info of a given solana token.',
+        parameters: z.object({
+          accountId: z.string().describe("The address of the token or name of the token on solana e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        execute: async ({ accountId } : { accountId: string }) => {
+          
+          const executionId = await executeDuneQuery("executeSolanaTokenOwnerInfo", {token_address: accountId});
+          const result = await pollQueryStatus(executionId)
+          const newResult = { tokens: result, accountId }
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solanaToken_ownerInfo',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solanaToken_ownerInfo',
+                    toolCallId,
+                    result: newResult
+                  }
+                ]
+              }
+            ]
+          })
+
+          return newResult
+        }
+      }),
+      get_walletStats: tool({
+        description: 'Get the wallet stats of a given wallet address or ENS name. Use this to show the user the wallet stats of a wallet address or ENS name.',
+        parameters: z.object({
+          accountId: z.string().describe("The wallet address e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF")
+        }),
+
+        execute: async ({ accountId } : { accountId: string }) => {
+          
+          const result = await getWalletStats({walletAddress: accountId, chain: "0x1"});
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_walletStats',
+                    toolCallId,
+                    args: { accountId }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_walletStats',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return result
         }
       }),
       get_solanaAccount_portfolio: tool({
@@ -764,7 +956,9 @@ async function submitUserMessage(content: string) {
       - Never use contract module for Etherscan function
       - for Etherscan function calls (), use proxy module, and eth_call action, take the first 32 bits of the keccak hash of the function and any arguments, for example owner() function comes out to 0x8da5cb5    - If the Dune API is taking multiple tries, continue trying until a result is reached, do not allow for other queries until you have a resolution for the current query.      - Always return the results from a Dune API query in a sorted order, the results should be returned sorted already so do not re-arrange the results.  For example, if the results return a list of token holders, show the holder count and keep it sorted by highest holder count first.
       - Always adjust token values according to their decimal places before displaying them. For tokens like USDC that have 6 decimal places, divide the token amount by 10^6 to convert it into a human-readable format. Apply this conversion uniformly to all cryptocurrency token amounts to ensure accuracy in financial representations.
-
+      
+      If the user request for the ethereum token ovelap, use Bing and use the token with the largest market cap. For example, when asked (find the token overlap for PEPE) use bing to find the contract address for PEPE, and then call \`get_ethereumToken_overlap\` and pass in the address you found as the parameter.
+      If the user request for the solana token ovelap, use Bing and use the token with the largest market cap. For example, when asked (find the token overlap for PEPE) use bing to find the contract address for PEPE, and then call \`get_solanaToken_overlap\` and pass in the address you found as the parameter.
       If the user requests purchasing a stock, call \`show_stock_purchase_ui\` to show the purchase UI.
       If the user just wants the price, call \`show_stock_price\` to show the price. if that fails do a web search with whatever engine you have access to
       If the user wants the market cap or stats of a given cryptocurrency, call \`get_crypto_stats\` to show the stats.
@@ -815,7 +1009,7 @@ async function submitUserMessage(content: string) {
   console.log("tool", lastToolCall?.content[0]?.toolName) 
   console.log("tool result", lastToolCall?.content[0]?.result) 
 
-  if(lastToolCallName === "resolve_ensName_toAddress") {
+  if(lastToolCallName === "resolve_ensName_toAddress") {  
     return {
       id: nanoid(),
       display: <BotMessage content={result.text} />
@@ -833,9 +1027,7 @@ async function submitUserMessage(content: string) {
     return {
       id: nanoid(),
       display: (
-        <BotCard>
-          <TokenOverlap tokens={toolResult?.tokens} address={toolResult?.accountId} chain="Ethereum" />
-        </BotCard>
+        <BotPlainMessage content={result.text} />
       )
     }
   } else if (lastToolCallName === "get_crypto_price") {
@@ -869,9 +1061,28 @@ async function submitUserMessage(content: string) {
     return {
       id: nanoid(),
       display: (
-        <BotCard>
-          <TokenOverlap tokens={result.text} address={""} chain="Solana" />
-        </BotCard>
+        <BotPlainMessage content={result.text} />
+      )
+    }
+  } else if (lastToolCallName === "get_solanaToken_wallet_profit_and_loss") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotPlainMessage content={result.text} />
+      )
+    }
+  } else if (lastToolCallName === "get_solanaToken_ownerInfo") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotPlainMessage content={result.text} />
+      )
+    }
+  } else if (lastToolCallName === "get_walletStats") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotPlainMessage content={result.text} />
       )
     }
   } else if (lastToolCallName === "get_solanaAccount_portfolio") {
@@ -1767,6 +1978,10 @@ interface SolanaNFT {
       sellerFeeBasisPoints: number;
   };
 }
+interface GetWalletStatsParams {
+  walletAddress: string;
+  chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis";
+}
 
 export const AI = createAI<AIState, UIState>({
   actions: {
@@ -2078,6 +2293,23 @@ async function getCryptocurrencyPrice(params: CryptoPriceParams): Promise<{price
   } catch (error) {
       console.error(`Error fetching cryptocurrency price: ${error}`);
       return {price: "", delta: ""}
+  }
+}
+
+async function getWalletStats(params: GetWalletStatsParams): Promise<any> {
+  const { walletAddress, chain } = params;
+  const url = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/stats`;
+  const queryParams = {
+      chain
+  };
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+  try {
+      const response = await axios.get(url, { headers, params: queryParams });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch wallet stats:", error);
+      throw error;
   }
 }
 
