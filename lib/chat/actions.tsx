@@ -222,11 +222,7 @@ async function submitUserMessage(content: string) {
             ]
           })
 
-          return (
-            <BotCard>
-              <Price symbol={symbol} price={price} delta={delta} />
-            </BotCard>
-          );
+          return newResult
         },
       }),
       get_crypto_stats: tool({
@@ -320,11 +316,7 @@ async function submitUserMessage(content: string) {
               ]
             })
 
-            return (
-                <BotCard>
-                  <Stats {...marketStats} />
-                </BotCard>
-            );
+            return marketStats
         }
       }),
       get_ethereumToken_overlap: tool({
@@ -667,6 +659,194 @@ async function submitUserMessage(content: string) {
           return result
         }
       }),
+      get_wallet_networth: tool({
+        description: 'Get networth of a given wallet address. Use this to show the user the networth of a given wallet address',
+        parameters: z.object({
+          address: z.string().describe("The wallet address e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"),
+        }),
+
+        execute: async ({ address } : { address: string }) => {
+          
+          const result = await getWalletNetWorth({walletAddress: address})
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_wallet_networth',
+                    toolCallId,
+                    args: { address }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_wallet_networth',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return result
+        }
+      }),
+      get_NFT_by_wallet: tool({
+        description: 'Get the NFTs owned by a given wallet address. Use this to show the user the NFTs owned by a given wallet address',
+        parameters: z.object({
+          address: z.string().describe("The wallet address e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"),
+        }),
+
+        execute: async ({ address } : { address: string }) => {
+          
+          const result = await fetchNFTByWallet({ address: address, chain: "0x1" });
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_NFT_by_wallet',
+                    toolCallId,
+                    args: { address }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_NFT_by_wallet',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return result
+        }
+      }),
+      get_solana_transaction: tool({
+        description: 'Get the solana transactions of a given public key. Use this to show the user the solana transactions of a given public key',
+        parameters: z.object({
+          pubkey: z.string().describe("The public key e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"),
+        }),
+
+        execute: async ({ pubkey } : { pubkey: string }) => {
+          
+          const result = await fetchSolanaTransactions({ pubkey: pubkey  });
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solana_transaction',
+                    toolCallId,
+                    args: { pubkey }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solana_transaction',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return result
+        }
+      }),
+      get_solana_transaction_info: tool({
+        description: 'Get the transaction info of a given solana transaction signature hash. Use this to show the user the networth of a given wallet address',
+        parameters: z.object({
+          hash: z.string().describe("The signature hash of the solana transaction e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"),
+        }),
+
+        execute: async ({ hash } : { hash: string }) => {
+          
+          const result = await fetchSolanaTransactionInfo(hash);
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_solana_transaction_info',
+                    toolCallId,
+                    args: { hash }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_solana_transaction_info',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return result
+        }
+      }),
       get_solanaAccount_portfolio: tool({
         description: 'Get the portfolio of a given solana account. Use this to show the user the portfolio of a given solana account.',
         parameters: z.object({
@@ -712,11 +892,7 @@ async function submitUserMessage(content: string) {
             ]
           })
 
-          return (
-            <BotCard>
-              <SolanaPortfolio tokens={result.tokens} nfts={result.nfts} balance={result.nativeBalance.solana} address={accountId} />
-            </BotCard>
-          ) 
+          return newResult
         } 
       }),
       get_solanaAccount_tokens: tool({
@@ -765,11 +941,7 @@ async function submitUserMessage(content: string) {
             ]
           })
 
-          return (
-            <BotCard>
-              <SolanaToken tokens={result} address={accountId} />
-            </BotCard>
-          ) 
+          return newResult 
         } 
       }),
       get_solanaAccount_NFTs: tool({
@@ -817,11 +989,7 @@ async function submitUserMessage(content: string) {
             ]
           })
 
-          return (
-            <BotCard>
-              <SolanaNFTs nfts={result} address={accountId} />
-            </BotCard>
-          ) 
+          return newResult
         } 
       }),
       get_solanaToken_price: tool({
@@ -833,7 +1001,7 @@ async function submitUserMessage(content: string) {
         execute: async ({ tokenId }: { tokenId: string }) => {
     
           const result = await getSolanaTokenPrice(tokenId);
-          console.log(result)
+          const newResult = { price: result.price, symbol: result.symbol }
 
           await sleep(1000);
 
@@ -870,9 +1038,7 @@ async function submitUserMessage(content: string) {
             ]
           })
 
-          return (
-            <BotMessage content={JSON.stringify(result.price)} />
-          );
+          return newResult
         },
       }),
       getEvents: tool({
@@ -921,11 +1087,7 @@ async function submitUserMessage(content: string) {
             ]
           })
 
-          return (
-            <BotCard>
-              <Events props={result.data} />
-            </BotCard>
-          )
+          return result.data
         }
       }),
       resolve_ensName_toAddress: tool({
@@ -973,9 +1135,7 @@ async function submitUserMessage(content: string) {
             ]
           })
 
-          return (
-            <BotMessage content={response} />
-          )
+          return response
         },
       }),
       etherscan_api_query: tool({
@@ -1024,11 +1184,7 @@ async function submitUserMessage(content: string) {
             ]
           })
 
-          return (
-            <BotCard>
-              <TransactionList transactions={result} address={params} />
-            </BotCard>
-          ) 
+          return newResult
         } 
       }),
     },
@@ -1189,6 +1345,34 @@ async function submitUserMessage(content: string) {
       )
     }
   } else if (lastToolCallName === "get_ERC20_data") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotMessage content={result.text} />
+      )
+    }
+  } else if (lastToolCallName === "get_NFT_by_wallet") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotMessage content={result.text} />
+      )
+    }
+  } else if (lastToolCallName === "get_wallet_networth") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotMessage content={result.text} />
+      )
+    }
+  } else if (lastToolCallName === "get_solana_transaction_info") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotMessage content={result.text} />
+      )
+    }
+  } else if (lastToolCallName === "get_solana_transaction") {
     return {
       id: nanoid(),
       display: (
@@ -2103,6 +2287,25 @@ interface FetchERC20DataParams {
   chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis";
   exclude_spam: "true" | "false"
 }
+interface GetWalletNetWorthParams {
+  walletAddress: string;
+  exclude_spam?: boolean;
+  exclude_unverified_contracts?: boolean;
+}
+interface FetchTransactionsParams {
+  pubkey: string;
+  limit?: number;
+}
+
+interface FetchNFTDataParams {
+  address: string;
+  chain: string;
+  limit?: string;
+  exclude_spam?: string;
+  format?: string;
+  token_addresses?: string;
+  media_items?: boolean;
+}
 
 export const AI = createAI<AIState, UIState>({
   actions: {
@@ -2471,6 +2674,81 @@ async function fetchERC20Data(params: FetchERC20DataParams): Promise<any> {
   }
 }
 
+async function getWalletNetWorth(params: GetWalletNetWorthParams): Promise<any> {
+  const { walletAddress, exclude_spam, exclude_unverified_contracts } = params;
+  const url = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/net-worth`;
+  const queryParams = {
+      exclude_spam,
+      exclude_unverified_contracts
+  };
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+  try {
+      const response = await axios.get(url, { headers, params: queryParams });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch wallet net worth:", error);
+      throw error;
+  }
+}
+
+async function fetchNFTByWallet(params: FetchNFTDataParams): Promise<any> {
+  const { address, chain, limit, exclude_spam, format, token_addresses, media_items } = params;
+  const url = `https://deep-index.moralis.io/api/v2.2/${address}/nft`;
+  const queryParams = {
+      chain,
+      limit,
+      exclude_spam,
+      format,
+      token_addresses,
+      media_items
+  };
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+  try {
+      const response = await axios.get(url, { headers, params: queryParams });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch NFT data:", error);
+      throw error;
+  }
+}
+
+async function fetchSolanaTransactions(params: FetchTransactionsParams): Promise<any> {
+  const { pubkey, limit } = params;
+  const url = `https://api.solanabeach.io/v1/account/${pubkey}/transactions`;
+  const headers = { 
+      'Accept': 'application/json', 
+      'Authorization': process.env.SOLANA_BEACH_API_KEY as string 
+  };
+  try {
+      const response = await axios.get(url, { 
+          headers, 
+          params: limit ? { limit } : {} 
+      });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+      throw error;
+  }
+}
+
+async function fetchSolanaTransactionInfo(singatureHash: string): Promise<any> {
+  const url = `https://api.solanabeach.io/v1/transaction/${singatureHash}`;
+  const headers = { 
+      'Accept': 'application/json', 
+      'Authorization': process.env.SOLANA_BEACH_API_KEY as string 
+  };
+  try {
+      const response = await axios.get(url, { 
+          headers
+      });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+      throw error;
+  }
+}
 function formatTokenOverlap(token: any) {
   return `
   Contract Address: ${token.contract_address}</br>
