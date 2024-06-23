@@ -571,6 +571,102 @@ async function submitUserMessage(content: string) {
           return result
         }
       }),
+      get_ERC20_tokenOwners: tool({
+        description: 'Get list of owners of a given ERC20 token. Use this to show the user the list of owners of a given ERC20 token',
+        parameters: z.object({
+          contractAddress: z.string().describe("The contract address of the token e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"),
+          chain: z.string().describe("The chain on which the token is delpoyed e.g, Ethereum, Polygon, Solana")
+        }),
+
+        execute: async ({ contractAddress, chain } : { contractAddress: string, chain: string }) => {
+          
+          const result = await fetchERC20TokenOwners({ contractAddress: contractAddress, chain: chain })
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_ERC20_tokenOwners',
+                    toolCallId,
+                    args: { contractAddress, chain }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_ERC20_tokenOwners',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return result
+        }
+      }),
+      get_ERC20_Data: tool({
+        description: 'Get data or info of a given ERC20 token. Use this to show the user the data or info of a given ERC20 token',
+        parameters: z.object({
+          address: z.string().describe("The contract address of the token e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"),
+          chain: z.string().describe("The chain on which the token is delpoyed e.g, Ethereum, Polygon, Solana")
+        }),
+
+        execute: async ({ address, chain } : { address: string, chain: string }) => {
+          
+          const result = await fetchERC20Data({ address: address, chain: "0x1", exclude_spam: "true" })
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_ERC20_Data',
+                    toolCallId,
+                    args: { address, chain }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_ERC20_Data',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return result
+        }
+      }),
       get_solanaAccount_portfolio: tool({
         description: 'Get the portfolio of a given solana account. Use this to show the user the portfolio of a given solana account.',
         parameters: z.object({
@@ -1027,7 +1123,7 @@ async function submitUserMessage(content: string) {
     return {
       id: nanoid(),
       display: (
-        <BotPlainMessage content={result.text} />
+        <BotMessage content={result.text} />
       )
     }
   } else if (lastToolCallName === "get_crypto_price") {
@@ -1061,28 +1157,42 @@ async function submitUserMessage(content: string) {
     return {
       id: nanoid(),
       display: (
-        <BotPlainMessage content={result.text} />
+        <BotMessage content={result.text} />
       )
     }
   } else if (lastToolCallName === "get_solanaToken_wallet_profit_and_loss") {
     return {
       id: nanoid(),
       display: (
-        <BotPlainMessage content={result.text} />
+        <BotMessage content={result.text} />
       )
     }
   } else if (lastToolCallName === "get_solanaToken_ownerInfo") {
     return {
       id: nanoid(),
       display: (
-        <BotPlainMessage content={result.text} />
+        <BotMessage content={result.text} />
       )
     }
   } else if (lastToolCallName === "get_walletStats") {
     return {
       id: nanoid(),
       display: (
-        <BotPlainMessage content={result.text} />
+        <BotMessage content={result.text} />
+      )
+    }
+  } else if (lastToolCallName === "get_ERC20_tokenOwners") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotMessage content={result.text} />
+      )
+    }
+  } else if (lastToolCallName === "get_ERC20_data") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotMessage content={result.text} />
       )
     }
   } else if (lastToolCallName === "get_solanaAccount_portfolio") {
@@ -1982,6 +2092,17 @@ interface GetWalletStatsParams {
   walletAddress: string;
   chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis";
 }
+interface FetchERC20TokenOwnersParams {
+  contractAddress: string;
+  chain: string;
+  order?: "ASC" | "DESC";
+  cursor?: string;
+}
+interface FetchERC20DataParams {
+  address: string;
+  chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis";
+  exclude_spam: "true" | "false"
+}
 
 export const AI = createAI<AIState, UIState>({
   actions: {
@@ -2309,6 +2430,43 @@ async function getWalletStats(params: GetWalletStatsParams): Promise<any> {
       return response.data;
   } catch (error) {
       console.error("Failed to fetch wallet stats:", error);
+      throw error;
+  }
+}
+
+async function fetchERC20TokenOwners(params: FetchERC20TokenOwnersParams): Promise<any> {
+  const { contractAddress, chain, order, cursor } = params;
+  const url = `https://deep-index.moralis.io/api/v2.2/erc20/${contractAddress}/owners`;
+  const queryParams = {
+      chain,
+      order,
+      cursor
+  };
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+  try {
+      const response = await axios.get(url, { headers, params: queryParams });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch ERC-20 token owners:", error);
+      throw error;
+  }
+}
+
+async function fetchERC20Data(params: FetchERC20DataParams): Promise<any> {
+  const { address, chain, exclude_spam } = params;
+  const url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20`;
+  const queryParams = {
+      chain,
+      exclude_spam
+  };
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+  try {
+      const response = await axios.get(url, { headers, params: queryParams });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch ERC-20 data:", error);
       throw error;
   }
 }
