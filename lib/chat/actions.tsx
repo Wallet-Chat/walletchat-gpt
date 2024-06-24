@@ -1306,6 +1306,7 @@ async function submitUserMessage(content: string) {
 
   console.log("tool", lastToolCall?.content[0]?.toolName) 
   console.log("tool result", lastToolCall?.content[0]?.result) 
+  console.log("text result", result.text) 
 
   if(lastToolCallName === "resolve_ensName_toAddress") {  
     return {
@@ -1316,9 +1317,10 @@ async function submitUserMessage(content: string) {
     return {
       id: nanoid(),
       display: (
-        <BotCard>
-          <TransactionList transactions={toolResult?.result?.result} address={toolResult?.params} />
-        </BotCard>
+        <BotMessage content={result.text} />
+        // <BotCard>
+        //   <TransactionList transactions={toolResult?.result?.result} address={toolResult?.params} />
+        // </BotCard>
       )
     }
   } else if (lastToolCallName === "get_ethereumToken_overlap") {
