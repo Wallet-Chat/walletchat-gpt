@@ -47,9 +47,11 @@ export async function getChat(id: string, userId: string) {
 export async function removeChat({ id, path }: { id: string; path: string }) {
   // const session = await auth()
   try {
-    const address = await axios.get('/api/connectWallet');
+    // const address = await axios.get('/api/connectWallet');
+    const address = await fetch(process.env.URL + '/api/connectWallet');
+    const connectedWallet = await address.json();
 
-    if (!address.data) {
+    if (!connectedWallet) {
       return {
         error: 'Unauthorized'
       }
@@ -57,14 +59,14 @@ export async function removeChat({ id, path }: { id: string; path: string }) {
     //Convert uid to string for consistent comparison with session.user.id
     const uid = String(await kv.hget(`chat:${id}`, 'userId'))
   
-    if (uid !== address.data) {
+    if (uid !== connectedWallet) {
       return {
         error: 'Unauthorized'
       }
     }
   
     await kv.del(`chat:${id}`)
-    await kv.zrem(`user:chat:${address.data}`, `chat:${id}`)
+    await kv.zrem(`user:chat:${connectedWallet}`, `chat:${id}`)
   
     revalidatePath('/')
     return revalidatePath(path)
@@ -78,15 +80,17 @@ export async function clearChats() {
   // const session = await auth()
 
   try {
-    const address = await axios.get('/api/connectWallet');
+    // const address = await axios.get('/api/connectWallet');
+    const address = await fetch(process.env.URL + '/api/connectWallet');
+    const connectedWallet = await address.json();
 
-    if (!address.data) {
+    if (!connectedWallet) {
       return {
         error: 'Unauthorized'
       }
     }
   
-    const chats: string[] = await kv.zrange(`user:chat:${address.data}`, 0, -1)
+    const chats: string[] = await kv.zrange(`user:chat:${connectedWallet}`, 0, -1)
     if (!chats.length) {
       return redirect('/')
     }
@@ -94,7 +98,7 @@ export async function clearChats() {
   
     for (const chat of chats) {
       pipeline.del(chat)
-      pipeline.zrem(`user:chat:${address.data}`, chat)
+      pipeline.zrem(`user:chat:${connectedWallet}`, chat)
     }
   
     await pipeline.exec()
@@ -120,9 +124,11 @@ export async function shareChat(id: string) {
   // const session = await auth()
 
   try {
-    const address = await axios.get('/api/connectWallet');
+    // const address = await axios.get('/api/connectWallet');
+    const address = await fetch(process.env.URL + '/api/connectWallet');
+    const connectedWallet = await address.json();
 
-    if (!address) {
+    if (!connectedWallet) {
       return {
         error: 'Unauthorized'
       }
@@ -130,7 +136,7 @@ export async function shareChat(id: string) {
   
     const chat = await kv.hgetall<Chat>(`chat:${id}`)
   
-    if (!chat || chat.userId !== address.data) {
+    if (!chat || chat.userId !== connectedWallet) {
       return {
         error: 'Something went wrong'
       }
@@ -153,9 +159,10 @@ export async function saveChat(chat: Chat) {
   // const session = await auth()
 
   try {
-    const address = await axios.get('/api/connectWallet');
+    const address = await fetch(process.env.URL + '/api/connectWallet');
+    const connectedWallet = await address.json();
 
-    if (address.data && address.data) {
+    if (connectedWallet) {
       const pipeline = kv.pipeline()
       pipeline.hmset(`chat:${chat.id}`, chat)
       pipeline.zadd(`user:chat:${chat.userId}`, {
@@ -167,7 +174,7 @@ export async function saveChat(chat: Chat) {
       return
     }
   } catch (error) {
-    
+    console.log("Error", error)
   }
 
 }
