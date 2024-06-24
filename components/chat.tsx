@@ -22,18 +22,6 @@ export function Chat({ id, initialMessages, className }: ChatProps) {
   const [input, setInput] = useState('')
   const [messages] = useUIState()
 
-  // const { messages, append, reload, stop, isLoading, input, setInput } =
-  //   useChat({
-  //     api: '/api/chat',
-  //     initialMessages,
-  //     id,
-  //     body: { id },
-  //     onResponse(response) {
-  //       if (response.status !== 200) {
-  //         toast.error(response.statusText)
-  //       }
-  //     }
-  //   })
   const { messagesRef, scrollRef, visibilityRef, isAtBottom, scrollToBottom } = useScrollAnchor()
   return (
     <div className='group w-full overflow-auto pl-0 peer-[[data-state=open]]:lg:pl-[250px] peer-[[data-state=open]]:xl:pl-[300px]'>

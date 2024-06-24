@@ -116,7 +116,6 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
 
 async function submitUserMessage(content: string) {
   'use server'
-  console.log("first entry");
   const aiState = getMutableAIState<typeof AI>()
 
   aiState.update({
@@ -659,6 +658,53 @@ async function submitUserMessage(content: string) {
           return result
         }
       }),
+      get_wallet_balance: tool({
+        description: 'Get wallet balance of a given wallet address. Use this to show the user the wallet of a given wallet address',
+        parameters: z.object({
+          address: z.string().describe("The wallet address e.g, 3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"),
+        }),
+
+        execute: async ({ address } : { address: string }) => {
+          
+          const result = await getWalletBalance({walletAddress: address, chain: "0x1"})
+          await sleep(1000);
+
+          const toolCallId = nanoid()
+        
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'tool-call',
+                    toolName: 'get_wallet_balance',
+                    toolCallId,
+                    args: { address }
+                  }
+                ]
+              },
+              {
+                id: nanoid(),
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'get_wallet_balance',
+                    toolCallId,
+                    result: result
+                  }
+                ]
+              }
+            ]
+          })
+
+          return result
+        }
+      }),
       get_wallet_networth: tool({
         description: 'Get networth of a given wallet address. Use this to show the user the networth of a given wallet address',
         parameters: z.object({
@@ -667,7 +713,7 @@ async function submitUserMessage(content: string) {
 
         execute: async ({ address } : { address: string }) => {
           
-          const result = await getWalletNetWorth({walletAddress: address})
+          const result = await getWalletNetWorth({walletAddress: address, exclude_spam: true, exclude_unverified_contracts: true})
           await sleep(1000);
 
           const toolCallId = nanoid()
@@ -1365,6 +1411,13 @@ async function submitUserMessage(content: string) {
         <BotMessage content={result.text} />
       )
     }
+  } else if (lastToolCallName === "get_wallet_balance") {
+    return {
+      id: nanoid(),
+      display: (
+        <BotMessage content={result.text} />
+      )
+    }
   } else if (lastToolCallName === "get_solana_transaction_info") {
     return {
       id: nanoid(),
@@ -1481,6 +1534,10 @@ interface GetWalletNetWorthParams {
   exclude_spam?: boolean;
   exclude_unverified_contracts?: boolean;
 }
+interface GetWalletBalanceParams {
+  walletAddress: string;
+  chain: "0x1" | "bsc" | "polygon" | "base" | "arbitrum" | "optimism" | "chiliz" | "gnosis"
+}
 interface FetchTransactionsParams {
   pubkey: string;
   limit?: number;
@@ -1507,7 +1564,6 @@ export const AI = createAI<AIState, UIState>({
     'use server'
     
     try {
-      // const address = await axios.get('/api/connectWallet');
       const address = await fetch(process.env.URL + '/api/connectWallet');
       const connectedWallet = await address.json();
 
@@ -1529,7 +1585,6 @@ export const AI = createAI<AIState, UIState>({
     'use server'
     
     try {
-      // const address = await axios.get('/api/connectWallet');
       const address = await fetch(process.env.URL + '/api/connectWallet');
       const connectedWallet = await address.json();
 
@@ -1881,6 +1936,23 @@ async function getWalletNetWorth(params: GetWalletNetWorthParams): Promise<any> 
       return response.data;
   } catch (error) {
       console.error("Failed to fetch wallet net worth:", error);
+      throw error;
+  }
+}
+
+async function getWalletBalance(params: GetWalletBalanceParams): Promise<any> {
+  const { walletAddress, chain } = params;
+  const url = `https://deep-index.moralis.io/api/v2.2/${walletAddress}/balance`;
+  const queryParams = {
+      chain
+  };
+  const headers = { 'X-API-Key': process.env.MORALIS_API_KEY as string };
+
+  try {
+      const response = await axios.get(url, { headers, params: queryParams });
+      return response.data;
+  } catch (error) {
+      console.error("Failed to fetch wallet balance:", error);
       throw error;
   }
 }

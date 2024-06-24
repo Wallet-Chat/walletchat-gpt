@@ -47,7 +47,6 @@ export async function getChat(id: string, userId: string) {
 export async function removeChat({ id, path }: { id: string; path: string }) {
   // const session = await auth()
   try {
-    // const address = await axios.get('/api/connectWallet');
     const address = await fetch(process.env.URL + '/api/connectWallet');
     const connectedWallet = await address.json();
 
@@ -80,7 +79,6 @@ export async function clearChats() {
   // const session = await auth()
 
   try {
-    // const address = await axios.get('/api/connectWallet');
     const address = await fetch(process.env.URL + '/api/connectWallet');
     const connectedWallet = await address.json();
 
@@ -124,7 +122,6 @@ export async function shareChat(id: string) {
   // const session = await auth()
 
   try {
-    // const address = await axios.get('/api/connectWallet');
     const address = await fetch(process.env.URL + '/api/connectWallet');
     const connectedWallet = await address.json();
 
