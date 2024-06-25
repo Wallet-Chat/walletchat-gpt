@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { Assistant } from "openai/resources/beta/assistants.mjs";
 import { ChatCompletionTool } from "openai/resources/index.mjs";
 import { getWalletAddress } from "../../../lib/walletstate";
-import { Console } from "console";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
