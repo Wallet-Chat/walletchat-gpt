@@ -44,6 +44,8 @@ import TokenOverlap from '@/components/crypto/token-overlap'
 import TransactionList from '@/components/crypto/transactions-list'
 import { generateText, tool } from 'ai'
 
+export const maxDuration = 300; // This function can run for a maximum of 5 seconds
+
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'
 
