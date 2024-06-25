@@ -3,6 +3,8 @@ import "./styles.css";
 
 import Pagination from "@mui/material/Pagination";
 
+export const maxDuration = 300
+
 interface Props {
     page: any;
     handlePageChange: (e: React.ChangeEvent<unknown>, value: number) => void

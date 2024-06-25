@@ -14,6 +14,8 @@ import { settingCoinObject } from "../../../functions/settingCoinObject";
 import News from "@/components/CoinPage/News";
 import { getCoinNews } from "@/functions/getCoinNews";
 
+export const maxDuration = 300
+
 type Props = {
   params: { id: string }
 }
