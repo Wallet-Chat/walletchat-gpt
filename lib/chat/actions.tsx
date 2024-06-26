@@ -27,7 +27,7 @@ import {
   nanoid
 } from '@/lib/utils'
 import { saveChat } from '@/app/actions'
-import { BotPlainMessage, SpinnerMessage, UserMessage } from '@/components/crypto/message'
+import { SpinnerMessage, UserMessage } from '@/components/crypto/message'
 import { Chat, Message } from '@/lib/types'
 import axios from 'axios'
 import { PriceSkeleton } from '@/components/crypto/price-skeleton'
@@ -37,11 +37,8 @@ import { Prices } from '@/components/crypto/prices'
 import { StatsSkeleton } from '@/components/crypto/stats-skeleton'
 import { Stats } from '@/components/crypto/stats'
 import SolanaToken from '@/components/crypto/solana-tokens'
-import SolanaTokenSkeleton from '@/components/crypto/solana-token-skeleton'
 import SolanaNFTs from '@/components/crypto/solana-nfts'
 import SolanaPortfolio from '@/components/crypto/solana-portfolio'
-import TokenOverlap from '@/components/crypto/token-overlap'
-import TransactionList from '@/components/crypto/transactions-list'
 import { generateText, tool } from 'ai'
 
 export const maxDuration = 300; // This function can run for a maximum of 5 seconds
@@ -185,8 +182,9 @@ async function submitUserMessage(content: string) {
           const result = await getCryptocurrencyPrice({ symbol });
           const price = Number(result.price);
           const delta = Number(result.delta);
+          const slug = result.slug;
 
-          const newResult = { price, delta, symbol }
+          const newResult = { price, delta, symbol, slug }
 
           await sleep(1000);
 
@@ -1320,9 +1318,6 @@ async function submitUserMessage(content: string) {
       id: nanoid(),
       display: (
         <BotMessage content={result.text} />
-        // <BotCard>
-        //   <TransactionList transactions={toolResult?.result?.result} address={toolResult?.params} />
-        // </BotCard>
       )
     }
   } else if (lastToolCallName === "get_ethereumToken_overlap") {
@@ -1337,7 +1332,7 @@ async function submitUserMessage(content: string) {
       id: nanoid(),
       display: (
         <BotCard>
-          <Price symbol={toolResult?.symbol} price={toolResult?.price} delta={toolResult?.delta} />
+          <Price symbol={toolResult?.symbol} price={toolResult?.price} delta={toolResult?.delta} slug={toolResult.slug} />
         </BotCard>
       )
     }
@@ -1635,7 +1630,7 @@ export const getUIStateFromAIState = (aiState: Chat) => {
               </BotCard>
             ) : tool.toolName === 'get_crypto_price' ? (
               <BotCard>
-                <Price symbol={tool.result.symbol} price={tool.result.price} delta={tool.result.delta} />
+                <Price symbol={tool.result.symbol} price={tool.result.price} delta={tool.result.delta} slug={tool.result.slug} />
               </BotCard>
             ) : tool.toolName === 'get_crypto_stats' ? (
               <BotCard>
@@ -1846,7 +1841,7 @@ const fetchCryptoNews = async (coin: string): Promise<any> => {
   }
 };
 
-async function getCryptocurrencyPrice(params: CryptoPriceParams): Promise<{price: string, delta: string}> {
+async function getCryptocurrencyPrice(params: CryptoPriceParams): Promise<{price: string, delta: string, slug: string}> {
   const { symbol } = params;
   try {
       const url = `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest`;
@@ -1860,15 +1855,16 @@ async function getCryptocurrencyPrice(params: CryptoPriceParams): Promise<{price
   
       const response = await axios.get(url, { params, headers });
       if (response.status === 200 && response.data.data[symbol]) {
+          const slug = response.data.data[symbol].slug
           const price = response.data.data[symbol].quote.USD.price;
           const delta = response.data.data[symbol].quote.USD.volume_change_24h
-          return {price, delta};
+          return {price, delta, slug};
       } else {
-          return {price: "", delta: ""};
+          return {price: "", delta: "", slug: ""};
       }
   } catch (error) {
       console.error(`Error fetching cryptocurrency price: ${error}`);
-      return {price: "", delta: ""}
+      return {price: "", delta: "", slug: ""}
   }
 }
 

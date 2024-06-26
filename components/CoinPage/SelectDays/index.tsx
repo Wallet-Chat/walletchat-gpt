@@ -10,7 +10,7 @@ interface Props {
 
 function SelectDays({ days, handleDaysChange, noPTag }: Props) {
   return (
-    <div className="select-days" style={{ marginBottom: noPTag && "0" }}>
+    <div className="select-days" style={{ marginBottom: noPTag && "0", marginLeft: "63%"  }}>
       {!noPTag && <p>Price change in </p>}
       <Select
         value={days}
