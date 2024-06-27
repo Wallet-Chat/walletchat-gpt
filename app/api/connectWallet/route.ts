@@ -1,7 +1,8 @@
 // pages/api/connectWallet.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getWalletAddress, setWalletAddress } from '../../../lib/walletstate'; // Correct the path as needed
+import { getWalletAddress } from '../../../lib/walletstate'; // Correct the path as needed
+import { createUser } from '@/app/actions';
 
 interface SuccessResponse {
     success: boolean;
@@ -31,8 +32,9 @@ export async function POST(req: NextRequest) {
                 status: 200,
                 headers: {'Content-Type': 'application/json'}
             });
-            setWalletAddress(res, walletAddress);
-            // return res;
+
+            await createUser(walletAddress);
+
             return new NextResponse(JSON.stringify(res), {
                 status: 200,
                 headers: {'Content-Type': 'application/json'}
@@ -63,7 +65,8 @@ export async function GET(req: NextRequest) {
     console.log('GET wallet address called')
 
     try {
-        const address = getWalletAddress(req);
+        const address = getWalletAddress();
+
         if (address) {
             console.log('Wallet address found', address)
             return new NextResponse(JSON.stringify({ success: true, walletAddress: address }), {

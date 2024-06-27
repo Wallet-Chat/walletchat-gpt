@@ -5,9 +5,36 @@ import { redirect } from 'next/navigation'
 import { kv } from '@vercel/kv'
 import { User, type Chat } from '@/lib/types'
 import axios from 'axios'
+import { ResultCode } from '@/lib/utils'
+import { walletActions } from 'viem'
 
-export async function getUser(email: string) {
-  const user = await kv.hgetall<User>(`user:${email}`)
+export async function createUser(
+  connectedWallet: string,
+) {
+  const existingUser = await getUser(connectedWallet)
+
+  if (existingUser) {
+    return {
+      type: 'error',
+      resultCode: ResultCode.UserAlreadyExists
+    }
+  } else {
+    const user = {
+      id: crypto.randomUUID(),
+      walletAddress: connectedWallet
+    }
+
+    await kv.hmset(`user:${connectedWallet}`, user)
+
+    return {
+      type: 'success',
+      resultCode: ResultCode.UserCreated
+    }
+  }
+}
+
+export async function getUser(walletAddress: string) {
+  const user = await kv.hgetall<User>(`user:${walletAddress}`)
   return user
 }
 
@@ -34,10 +61,10 @@ export async function getChats(userId?: string | null) {
   }
 }
 
-export async function getChat(id: string, userId: string) {
+export async function getChat(id: string, connectedWallet: `0x${string}` | undefined) {
   const chat = await kv.hgetall<Chat>(`chat:${id}`)
 
-  if (!chat || (userId && chat.userId !== userId)) {
+  if (!chat || (connectedWallet && chat.userId !== connectedWallet)) {
     return null
   }
 

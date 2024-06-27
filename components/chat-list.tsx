@@ -1,12 +1,10 @@
-import { type Message } from 'ai'
 
 import { Separator } from '@/components/ui/separator'
-import { ChatMessage } from '@/components/chat-message'
 import { UIState } from '@/lib/chat/actions'
 import Link from 'next/link'
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons'
 import { useAccount } from 'wagmi'
-
+import { SpinnerMessage } from './crypto/message'
 export interface ChatList {
   messages: UIState[]
 }
@@ -45,6 +43,12 @@ export function ChatList({ messages }: ChatList) {
           {index < messages.length - 1 && <Separator className="my-4" />}
         </div>
       ))}
+
+      {messages.length === 1 && (
+        <div className="mt-10">
+          <SpinnerMessage />
+        </div>
+      )}
     </div>
   )
 }
