@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useId } from "react";
 import { scaleLinear } from "d3-scale";
 import { subMonths, format } from "date-fns";
 import { useResizeObserver } from "usehooks-ts";
-import { useAIState } from "ai/rsc";
+// import { useAIState } from "ai/rsc";
 
 interface Stock {
   symbol: string;
@@ -12,12 +12,17 @@ interface Stock {
   delta: number;
 }
 
-export function CoinChart({
-  props: { symbol, price, delta },
-}: {
-  props: Stock;
-}) {
-  const [aiState, setAIState] = useAIState();
+export function CoinChart() {
+  //{
+  //   props: { symbol, price, delta },
+  // }: {
+  //   props: Stock;
+  // }
+  const symbol = "wif";
+  const price = 2;
+  const delta = 2;
+
+  // const [aiState, setAIState] = useAIState();
   const id = useId();
 
   const [priceAtTime, setPriceAtTime] = useState({
@@ -55,17 +60,17 @@ export function CoinChart({
         )} and ${format(xToDate(endHighlight), "d LLL, yyyy")}`,
       };
 
-      if (aiState.messages[aiState.messages.length - 1]?.id === id) {
-        setAIState({
-          ...aiState,
-          messages: [...aiState.messages.slice(0, -1), message],
-        });
-      } else {
-        setAIState({
-          ...aiState,
-          messages: [...aiState.messages, message],
-        });
-      }
+      // if (aiState.messages[aiState.messages.length - 1]?.id === id) {
+      //   setAIState({
+      //     ...aiState,
+      //     messages: [...aiState.messages.slice(0, -1), message],
+      //   });
+      // } else {
+      //   setAIState({
+      //     ...aiState,
+      //     messages: [...aiState.messages, message],
+      //   });
+      // }
     }
   }, [startHighlight, endHighlight]);
 

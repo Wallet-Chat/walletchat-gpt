@@ -27,6 +27,9 @@
     border-radius: 50px;
     font-size: 14px;
     cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); 
+
+
 }
 
 .sidebar .new-chat p {
