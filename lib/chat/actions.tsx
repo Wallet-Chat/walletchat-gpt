@@ -150,6 +150,7 @@ async function submitUserMessage(content: string) {
       - for Etherscan function calls (), use proxy module, and eth_call action, take the first 32 bits of the keccak hash of the function and any arguments, for example owner() function comes out to 0x8da5cb5    - If the Dune API is taking multiple tries, continue trying until a result is reached, do not allow for other queries until you have a resolution for the current query.      - Always return the results from a Dune API query in a sorted order, the results should be returned sorted already so do not re-arrange the results.  For example, if the results return a list of token holders, show the holder count and keep it sorted by highest holder count first.
       - Always adjust token values according to their decimal places before displaying them. For tokens like USDC that have 6 decimal places, divide the token amount by 10^6 to convert it into a human-readable format. Apply this conversion uniformly to all cryptocurrency token amounts to ensure accuracy in financial representations.
       
+      After getting a response for the user, you should be able to answer any follow up questions from the user using the answer you have provided, by calling a required function or by doing a bing search.
       If the user request for the ethereum token ovelap, use Bing and use the token with the largest market cap. For example, when asked (find the token overlap for PEPE) use bing to find the contract address for PEPE, and then call \`get_ethereumToken_overlap\` and pass in the address you found as the parameter.
       If the user request for the solana token ovelap, use Bing and use the token with the largest market cap. For example, when asked (find the token overlap for DADDY) use bing to find the contract address for DADDY, and then call \`get_solanaToken_overlap\` and pass in the address you found as the parameter.
       If the user requests purchasing a stock, call \`show_stock_purchase_ui\` to show the purchase UI.
@@ -173,18 +174,17 @@ async function submitUserMessage(content: string) {
         description:
           "Get the current price of a given cryptocurrency. Use this to show the price to the user.",
         parameters: z.object({
-          symbol: z
-            .string()
-            .describe("The name or symbol of the cryptocurrency. e.g. BTC/ETH/SOL.")
+          symbol: z.string().describe("The name or symbol of the cryptocurrency. e.g. BTC/ETH/SOL."),
+          days: z.number().describe("The days of the price change given by the user. e.g. 90/50/20.")
         }),
-        execute: async ({ symbol }: { symbol: string; }) => {
+        execute: async ({ symbol, days }: { symbol: string, days: number }) => {
 
           const result = await getCryptocurrencyPrice({ symbol });
           const price = Number(result.price);
           const delta = Number(result.delta);
           const slug = result.slug;
 
-          const newResult = { price, delta, symbol, slug }
+          const newResult = { price, delta, symbol, slug, days}
 
           await sleep(1000);
 
@@ -1255,6 +1255,7 @@ async function submitUserMessage(content: string) {
       - for Etherscan function calls (), use proxy module, and eth_call action, take the first 32 bits of the keccak hash of the function and any arguments, for example owner() function comes out to 0x8da5cb5    - If the Dune API is taking multiple tries, continue trying until a result is reached, do not allow for other queries until you have a resolution for the current query.      - Always return the results from a Dune API query in a sorted order, the results should be returned sorted already so do not re-arrange the results.  For example, if the results return a list of token holders, show the holder count and keep it sorted by highest holder count first.
       - Always adjust token values according to their decimal places before displaying them. For tokens like USDC that have 6 decimal places, divide the token amount by 10^6 to convert it into a human-readable format. Apply this conversion uniformly to all cryptocurrency token amounts to ensure accuracy in financial representations.
       
+      After getting a response for the user, you should be able to answer any follow up questions from the user using the answer you have provided, by calling a required function or by doing a bing search.
       If the user request for the ethereum token ovelap, use Bing and use the token with the largest market cap. For example, when asked (find the token overlap for PEPE) use bing to find the contract address for PEPE, and then call \`get_ethereumToken_overlap\` and pass in the address you found as the parameter.
       If the user request for the solana token ovelap, use Bing and use the token with the largest market cap. For example, when asked (find the token overlap for PEPE) use bing to find the contract address for PEPE, and then call \`get_solanaToken_overlap\` and pass in the address you found as the parameter.
       If the user requests purchasing a stock, call \`show_stock_purchase_ui\` to show the purchase UI.
@@ -1332,7 +1333,7 @@ async function submitUserMessage(content: string) {
       id: nanoid(),
       display: (
         <BotCard>
-          <Price symbol={toolResult?.symbol} price={toolResult?.price} delta={toolResult?.delta} slug={toolResult.slug} />
+          <Price symbol={toolResult?.symbol} price={toolResult?.price} delta={toolResult?.delta} slug={toolResult.slug} days={toolResult?.days} />
         </BotCard>
       )
     }

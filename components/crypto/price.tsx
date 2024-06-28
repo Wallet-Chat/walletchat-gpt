@@ -16,9 +16,10 @@ interface Price {
   price: number
   delta: number
   slug: string
+  days?: number
 }
 
-export function Price({ symbol, price, delta, slug }: Price) {
+export function Price({ symbol, price, delta, slug, days: userDays }: Price) {
   const [aiState, setAIState] = useAIState()
   const id = useId()
   
@@ -55,6 +56,12 @@ export function Price({ symbol, price, delta, slug }: Price) {
       getData();
     }
   }, [symbol])
+
+  useEffect(() => {
+    if(userDays) {
+      setDays(userDays)
+    }
+  }, [userDays])
 
   useEffect(() => {
     if (startHighlight && endHighlight) {
