@@ -1,11 +1,8 @@
-"use client"
-import { type Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 
 import { getChat, getMissingKeys } from '@/app/actions'
 import { Chat } from '@/components/chat'
 import { AI } from '@/lib/chat/actions'
-import { Session } from '@/lib/types'
 import { useAccount } from 'wagmi'
 
 export interface ChatPageProps {
@@ -14,23 +11,10 @@ export interface ChatPageProps {
   }
 }
 
-export async function generateMetadata({
-  params
-}: ChatPageProps): Promise<Metadata> {
-    const { address, isConnected } = useAccount();
-
-    if (!isConnected) {
-      return {}
-    }
-
-    const chat = await getChat(params.id, address)
-    return {
-        title: chat?.title.toString().slice(0, 50) ?? 'Chat'
-    }
-}
-
 export default async function ChatPage({ params }: ChatPageProps) {
-    const { address, isConnected } = useAccount();
+    // const { address, isConnected } = useAccount();
+    const address = await fetch(process.env.URL + '/api/connectWallet');
+    const connectedWallet = await address.json();
 
 //   const session = (await auth()) as Session
     // const missingKeys = await getMissingKeys()
@@ -40,13 +24,13 @@ export default async function ChatPage({ params }: ChatPageProps) {
 //   }
 
 //   const userId = session.user.id as string
-  const chat = await getChat(params.id, address)
+  const chat = await getChat(params.id, connectedWallet)
 
   if (!chat) {
     redirect('/')
   }
 
-  if (chat?.userId !== address) {
+  if (chat?.userId !== connectedWallet) {
     notFound()
   }
 

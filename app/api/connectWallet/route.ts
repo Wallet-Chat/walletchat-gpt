@@ -1,8 +1,11 @@
 // pages/api/connectWallet.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getWalletAddress } from '../../../lib/walletstate'; // Correct the path as needed
+// import { getWalletAddress } from '../../../lib/walletstate'; // Correct the path as needed
 import { createUser } from '@/app/actions';
+import { getWalletAddress, setWalletAddress } from '@/lib/walletstate';
+import { kv } from '@vercel/kv';
+// import { useAccount } from 'wagmi';
 
 interface SuccessResponse {
     success: boolean;
@@ -33,6 +36,7 @@ export async function POST(req: NextRequest) {
                 headers: {'Content-Type': 'application/json'}
             });
 
+            setWalletAddress(res, walletAddress);
             await createUser(walletAddress);
 
             return new NextResponse(JSON.stringify(res), {
@@ -53,6 +57,7 @@ export async function POST(req: NextRequest) {
     }
 }
 
+
 // GET handler to retrieve the wallet address
 export async function GET(req: NextRequest) {
     if (req.method !== 'GET') {
@@ -62,10 +67,8 @@ export async function GET(req: NextRequest) {
         });
     }
 
-    console.log('GET wallet address called')
-
     try {
-        const address = getWalletAddress();
+        const address = getWalletAddress(req);
 
         if (address) {
             console.log('Wallet address found', address)
@@ -80,6 +83,7 @@ export async function GET(req: NextRequest) {
             });
         }
     } catch (error) {
+        console.log("Error", error)
         return new NextResponse(JSON.stringify({ message: 'Server error processing your request' }), {
             status: 500,
             headers: {'Content-Type': 'application/json'}

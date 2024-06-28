@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { headers } from 'next/headers'
 import "./globals.css";
 import ContextProvider from "@/context/Context";
@@ -8,7 +7,6 @@ import { config } from '@/config/wagmi'
 import { cookieToInitialState } from 'wagmi'
 import { Providers } from '@/components/providers'
 import { Header } from "@/components/header";
-// import Header from "@/components/Common/Header";
 
 export const metadata: Metadata = {
   title: "WalletChat AI",

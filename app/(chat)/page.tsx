@@ -10,10 +10,8 @@ export const metadata = {
 
 export const maxDuration = 300
 
-export default async function IndexPage() {
+export default function IndexPage() {
   const id = nanoid()
-//   const session = (await auth()) as Session
-//   const missingKeys = await getMissingKeys()
 
   return (
     <AI initialAIState={{ chatId: id, messages: [] }}>

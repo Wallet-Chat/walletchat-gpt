@@ -2,15 +2,17 @@
 import { Sidebar } from '@/components/sidebar'
 
 import { ChatHistory } from '@/components/chat-history'
-import { nanoid } from 'nanoid'
+import { useContext } from 'react';
+import { Context } from '@/context/Context';
 import { useAccount } from 'wagmi';
-import { getWalletAddress } from '@/lib/walletstate';
 
 export async function SidebarDesktop() {
+  // const { wallet } = useContext(Context);
+  // const { address, isConnected } = useAccount();
   const address = await fetch(process.env.URL + '/api/connectWallet');
   const connectedWallet = await address.json();
 
-
+ 
   console.log("add", connectedWallet)
   // if (!session?.user?.id) {
   //   return null
