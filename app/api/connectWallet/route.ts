@@ -30,19 +30,15 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { walletAddress } = body;
         if (typeof walletAddress === 'string') {
-            console.log('Wallet address updated', walletAddress)
-            let res = new NextResponse(JSON.stringify({ success: true, message: 'Wallet address updated', walletAddress }), {
+            let res = new NextResponse(JSON.stringify({ success: true, message: 'Wallet address updated: ', walletAddress }), {
                 status: 200,
                 headers: {'Content-Type': 'application/json'}
             });
 
-            setWalletAddress(res, walletAddress);
+            await setWalletAddress(res, walletAddress);
             await createUser(walletAddress);
 
-            return new NextResponse(JSON.stringify(res), {
-                status: 200,
-                headers: {'Content-Type': 'application/json'}
-            });
+            return res;  // Return the response directly
         } else {
             return new NextResponse(JSON.stringify({ message: 'Invalid wallet address provided' }), {
                 status: 400,
@@ -83,8 +79,7 @@ export async function GET(req: NextRequest) {
             });
         }
     } catch (error) {
-        console.log("Error", error)
-        return new NextResponse(JSON.stringify({ message: 'Server error processing your request' }), {
+        return new NextResponse(JSON.stringify({ message: 'Server error processing your request in get wallet address' }), {
             status: 500,
             headers: {'Content-Type': 'application/json'}
         });

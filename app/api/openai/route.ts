@@ -831,7 +831,7 @@ const pollQueryStatus = async (executionId: string) => {
             if (data.state === "QUERY_STATE_COMPLETED") {
                 return await getQueryResults(executionId);
             } else if (["QUERY_STATE_FAILED", "QUERY_STATE_CANCELLED", "QUERY_STATE_EXPIRED"].includes(data.state)) {
-                throw new Error(`Query failed with state: ${data.state}`);
+                return "Query Failed, please give more details such as full name of the chain or token contract address"
             }
             await new Promise(resolve => setTimeout(resolve, 2000)); // Poll every 2 seconds
         }
